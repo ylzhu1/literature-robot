@@ -1,87 +1,125 @@
 # Literature Agent
 
-一个用于自动抓取、筛选、总结并推送文献动态的小工具。当前版本面向“机器学习势 / DFT / 金属表面氧化机理”方向，默认推送到飞书群机器人。
+Literature Agent is a lightweight Python workflow for monitoring recent papers, filtering them by research interests, summarizing abstracts with an OpenAI-compatible LLM, and sending the report to Feishu or email.
 
-## 功能
+The default example configuration focuses on surface oxidation, density functional theory, machine-learning interatomic potentials, and metal surfaces. The keyword sets can be adapted to other research topics.
 
-- 从 arXiv 和 Crossref 抓取最新论文元数据
-- 按关键词和负面关键词筛选相关文献
-- 通过 DOI / URL 去重，避免重复推送
-- 调用 OpenAI-compatible 大模型生成中文核心思路
-- 推送到飞书自定义机器人
-- 支持 Windows 任务计划程序每天定时运行
+## Features
 
-## 项目结构
+- Fetch recent papers from arXiv and Crossref
+- Filter papers with positive and negative keyword groups
+- Deduplicate pushed papers with a local SQLite database
+- Generate Chinese summaries with an OpenAI-compatible chat-completion API
+- Send reports to Feishu custom bots
+- Optionally send reports by email through SMTP
+- Run manually or on a schedule with Windows Task Scheduler
+
+## Project Layout
 
 ```text
 literature_agent/
-  fetchers.py        # 抓取 arXiv / Crossref / RSS
-  filtering.py       # 关键词评分和负面关键词过滤
-  summarizer.py      # 调用大模型生成中文核心思路
-  report.py          # 生成 Markdown 日报
-  feishu_sender.py   # 飞书机器人推送
-  storage.py         # SQLite 去重数据库
-  main.py            # 主入口
+  fetchers.py        # arXiv, Crossref, and RSS fetchers
+  filtering.py       # keyword scoring and negative-keyword filtering
+  summarizer.py      # LLM-based and fallback summary generation
+  report.py          # Markdown report rendering
+  feishu_sender.py   # Feishu webhook sender
+  email_sender.py    # SMTP email sender
+  storage.py         # SQLite deduplication store
+  main.py            # CLI entry point
 
-config.json          # 公开配置：关键词、来源、推送开关
-.env.example         # 私密配置模板
-.env                 # 本地私密配置，不要上传 GitHub
-scripts/             # Windows 定时任务脚本
+config.json          # public configuration: sources, keywords, sender switches
+.env.example         # environment variable template
+scripts/             # Windows scheduling helper
 ```
 
-## 安装
+Runtime files such as `.env`, `data/`, `reports/`, and `logs/` are excluded by `.gitignore`.
 
-本项目第一版只依赖 Python 标准库，推荐 Python 3.10+。
+## Requirements
 
-```powershell
-cd D:\agent_Crawling_Literature
-D:\work_program\anaconda3\envs\pynep\python.exe -m py_compile .\literature_agent\main.py
-```
+- Python 3.10+
+- Network access to the selected metadata sources
+- Optional: Feishu custom bot webhook
+- Optional: SMTP account for email delivery
+- Optional: OpenAI-compatible LLM API
 
-## 配置私密信息
+The current MVP uses only the Python standard library.
 
-复制 `.env.example` 为 `.env`，然后填入自己的大模型 API 和飞书 webhook。
+## Configuration
+
+Create a private environment file from the template:
 
 ```powershell
 Copy-Item .env.example .env
 notepad .env
 ```
 
-示例：
+Configure the values needed by the notification channel and LLM provider:
 
 ```text
 LLM_API_KEY=sk-your-api-key
 LLM_BASE_URL=https://your-api-provider.example.com/v1
 LLM_MODEL=gpt-4o-mini
+
 FEISHU_WEBHOOK=https://open.feishu.cn/open-apis/bot/v2/hook/your-webhook-id
+
+SMTP_HOST=smtp.example.com
+SMTP_PORT=465
+SMTP_USERNAME=your_email@example.com
+SMTP_PASSWORD=your_smtp_authorization_code
+SMTP_USE_SSL=true
+SMTP_USE_TLS=false
 ```
 
-注意：`.env` 含有密钥，已经被 `.gitignore` 排除，不要上传到 GitHub。
+Notification channels are controlled in `config.json`:
 
-## 运行
+```json
+"email": {
+  "enabled": false,
+  "sender": "your_email@example.com",
+  "recipients": ["your_email@example.com"]
+},
+"feishu": {
+  "enabled": true
+}
+```
 
-手动运行并推送到飞书：
+Set `email.enabled` and `feishu.enabled` according to the deployment target. Both can be enabled at the same time.
+
+## Run Manually
+
+Generate a report and send it to the enabled channels:
 
 ```powershell
-cd D:\agent_Crawling_Literature
-D:\work_program\anaconda3\envs\pynep\python.exe -m literature_agent.main --config config.json --send-feishu
+python -m literature_agent.main --config config.json
 ```
 
-忽略去重、重新生成并推送当期结果：
+Send explicitly to Feishu:
 
 ```powershell
-D:\work_program\anaconda3\envs\pynep\python.exe -m literature_agent.main --config config.json --ignore-seen --send-feishu
+python -m literature_agent.main --config config.json --send-feishu
 ```
 
-只生成报告，不发送：
+Send explicitly by email:
 
 ```powershell
-D:\work_program\anaconda3\envs\pynep\python.exe -m literature_agent.main --config config.json --dry-run
+python -m literature_agent.main --config config.json --send-email
 ```
 
-## 定时运行
+Generate a report without sending:
 
-在管理员 PowerShell 中运行：
+```powershell
+python -m literature_agent.main --config config.json --dry-run
+```
+
+Regenerate and resend the current results while ignoring the deduplication database:
+
+```powershell
+python -m literature_agent.main --config config.json --ignore-seen --send-feishu
+```
+
+## Schedule On Windows
+
+Edit `scripts/install_windows_task.ps1` if a different Python path, project path, or schedule is needed. Then run PowerShell as administrator:
 
 ```powershell
 cd D:\agent_Crawling_Literature
@@ -89,44 +127,39 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\scripts\install_windows_task.ps1
 ```
 
-该脚本会创建 `LiteratureAgentDailyBrief` 任务，每天 10:00 自动运行并推送到飞书。
+By default, the task runs daily at 10:00 and sends the report to Feishu.
 
-## 关键词策略
+## Keyword Strategy
 
-当前配置采用“宽抓取、严筛选”的方式。
+The default configuration uses broad retrieval and stricter filtering.
 
-正向关键词关注：
+Positive keyword groups include:
 
-- 机器学习势、神经网络势、原子间势、主动学习
-- DFT、第一性原理、AIMD、分子动力学、GCMC、KMC、NEB
-- 表面氧化、铜氧化、氧吸附、氧解离、氧化物成核、氧化物生长、次表层氧
-- 台阶、晶面、缺陷、位错、晶界、表面重构、低配位位点
-- Cu、Pt、Ni、Ti、Ag、NiTi、过渡金属和合金表面
-- 原位 TEM、环境 TEM、AP-XPS、operando 表征
+- Machine-learning potentials, neural-network potentials, interatomic potentials, active learning
+- DFT, first-principles calculations, AIMD, molecular dynamics, GCMC, KMC, NEB
+- Surface oxidation, copper oxidation, oxygen adsorption, oxygen dissociation, oxide nucleation, oxide growth, subsurface oxygen
+- Stepped surfaces, facets, defects, dislocations, grain boundaries, surface reconstruction, low-coordinated sites
+- Cu, Pt, Ni, Ti, Ag, NiTi, transition metals, alloy surfaces
+- In situ TEM, environmental TEM, AP-XPS, operando characterization
 
-负面关键词用于排除：
+Negative keywords reduce false positives from unrelated domains such as biological oxidation, wastewater treatment, machining, surface roughness prediction, antibacterial coatings, and bioinformatics.
 
-- 生物氧化、废水处理、光催化降解
-- 电池正极、酶、植物、生物信息学、骨骼肌
-- 机械加工、表面粗糙度、切削力、刀具磨损
-- 抗菌涂层、细胞相容性、感染等跑偏方向
+## Security Notes
 
-## GitHub 安全提醒
-
-可以上传到 GitHub：
-
-- `literature_agent/`
-- `config.json`
-- `.env.example`
-- `.gitignore`
-- `README.md`
-- `scripts/`
-
-不要上传：
+Do not commit private credentials or runtime outputs. The repository is configured to ignore:
 
 - `.env`
 - `data/`
 - `reports/`
 - `logs/`
 
-如果使用 GitHub Actions，API key 和飞书 webhook 应放在 GitHub repository secrets 中。
+For GitHub Actions deployments, store credentials as repository secrets rather than files.
+
+## Development Roadmap
+
+- Add GitHub Actions scheduled deployment
+- Add Feishu card-style messages
+- Add RSSHub and journal-specific RSS sources
+- Add PDF / introduction / conclusion deep scan
+- Add weekly review mode
+- Add topic-specific configuration presets
