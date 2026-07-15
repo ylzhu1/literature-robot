@@ -81,10 +81,11 @@ Copy-Item -Recurse -Force (Join-Path $ProjectDir "scripts") $ReleaseDir
 # Literature Agent Quick Start
 
 1. Double-click `LiteratureAgentSetup.exe`.
-2. Fill in the LLM API settings.
-3. Fill in the Feishu webhook or email settings.
-4. Click `Test LLM` and `Test Feishu`.
-5. Set the daily time and click `Install / Update Windows Task`.
+2. Fill in the fields marked with a red `*`.
+3. Use Feishu, email, or both as notification channels.
+4. For QQ Mail, select QQ Mail and enter only the QQ email address plus SMTP authorization code.
+5. Click the test buttons for the channels you enabled.
+6. Set the daily time and click `Install / Update Windows Task`.
 
 The app creates a local `.env` file next to the executable. Keep that file private.
 "@ | Set-Content -Encoding UTF8 (Join-Path $ReleaseDir "QUICK_START.md")

@@ -66,8 +66,11 @@ The GUI can:
 - Enable or disable Feishu and email delivery
 - Test LLM connectivity
 - Send a Feishu test message
+- Send an email test message
 - Run a real literature test
 - Install or update the Windows scheduled task
+
+Required fields are marked with a red `*`. Email delivery is optional; when it is disabled, email fields do not need to be filled. For common email providers, the GUI only requires the provider, email address, and SMTP authorization code. Advanced SMTP fields are available when custom server settings are needed.
 
 ### Manual setup
 

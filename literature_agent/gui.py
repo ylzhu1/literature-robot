@@ -8,7 +8,7 @@ import sys
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from tkinter import BooleanVar, StringVar, Text, Tk, messagebox
+from tkinter import BooleanVar, Label, StringVar, Text, Tk, messagebox
 from tkinter import ttk
 
 from .config import load_config
@@ -28,6 +28,14 @@ PROJECT_DIR = project_dir()
 CONFIG_PATH = PROJECT_DIR / "config.json"
 ENV_PATH = PROJECT_DIR / ".env"
 TASK_NAME = "LiteratureAgentDailyBrief"
+
+EMAIL_PROVIDERS = {
+    "QQ Mail": {"host": "smtp.qq.com", "port": "465", "ssl": True, "tls": False},
+    "163 Mail": {"host": "smtp.163.com", "port": "465", "ssl": True, "tls": False},
+    "Outlook": {"host": "smtp.office365.com", "port": "587", "ssl": False, "tls": True},
+    "Gmail": {"host": "smtp.gmail.com", "port": "465", "ssl": True, "tls": False},
+    "Custom": {"host": "", "port": "465", "ssl": True, "tls": False},
+}
 
 
 def read_env(path: Path = ENV_PATH) -> dict[str, str]:
@@ -86,15 +94,35 @@ def validate_time(value: str) -> str:
     return f"{hour:02d}:{minute:02d}"
 
 
+def detect_email_provider(host: str) -> str:
+    host = host.lower().strip()
+    for name, settings in EMAIL_PROVIDERS.items():
+        if settings["host"] and settings["host"] == host:
+            return name
+    return "Custom"
+
+
 class SetupApp:
     def __init__(self, root: Tk) -> None:
         self.root = root
         self.root.title("Literature Agent Setup")
-        self.root.geometry("860x700")
-        self.root.minsize(760, 620)
+        self.root.geometry("900x740")
+        self.root.minsize(780, 650)
+        self.root.configure(bg="#f6f8fb")
 
         self.env = read_env()
         self.config = load_json_config()
+
+        style = ttk.Style()
+        try:
+            style.theme_use("clam")
+        except Exception:
+            pass
+        style.configure("Title.TLabel", font=("Segoe UI", 18, "bold"))
+        style.configure("Muted.TLabel", foreground="#586174")
+        style.configure("Section.TLabelframe.Label", font=("Segoe UI", 10, "bold"))
+        style.configure("Primary.TButton", padding=(12, 6))
+        style.configure("TButton", padding=(9, 5))
 
         self.llm_api_key = StringVar(value=self.env.get("LLM_API_KEY", ""))
         self.llm_base_url = StringVar(value=self.env.get("LLM_BASE_URL", "https://api.openai.com/v1"))
@@ -104,12 +132,7 @@ class SetupApp:
         self.feishu_webhook = StringVar(value=self.env.get("FEISHU_WEBHOOK", ""))
 
         email_config = self.config.get("email", {})
-        self.email_enabled = BooleanVar(value=bool(email_config.get("enabled", False)))
         smtp_username = self.env.get("SMTP_USERNAME", "")
-        sender_value = email_config.get("sender", smtp_username)
-        if sender_value == "your_email@example.com" and smtp_username:
-            sender_value = smtp_username
-        self.email_sender = StringVar(value=sender_value)
         recipients = email_config.get("recipients", [])
         if isinstance(recipients, list):
             recipients_value = ", ".join(recipients)
@@ -117,15 +140,23 @@ class SetupApp:
             recipients_value = str(recipients)
         if recipients_value == "your_email@example.com" and smtp_username:
             recipients_value = smtp_username
-        self.email_recipients = StringVar(value=recipients_value)
+        if recipients_value == smtp_username:
+            recipients_value = ""
+        self.email_enabled = BooleanVar(value=bool(email_config.get("enabled", False)))
+        detected_provider = detect_email_provider(self.env.get("SMTP_HOST", "")) if self.env.get("SMTP_HOST") else "QQ Mail"
+        self.email_provider = StringVar(value=detected_provider)
+        self.email_address = StringVar(value=smtp_username)
+        self.email_auth_code = StringVar(value=self.env.get("SMTP_PASSWORD", ""))
+        self.email_recipient = StringVar(value=recipients_value)
+        self.show_advanced_smtp = BooleanVar(value=False)
         self.smtp_host = StringVar(value=self.env.get("SMTP_HOST", ""))
         self.smtp_port = StringVar(value=self.env.get("SMTP_PORT", "465"))
-        self.smtp_username = StringVar(value=self.env.get("SMTP_USERNAME", ""))
-        self.smtp_password = StringVar(value=self.env.get("SMTP_PASSWORD", ""))
         self.smtp_ssl = BooleanVar(value=self.env.get("SMTP_USE_SSL", "true").lower() == "true")
         self.smtp_tls = BooleanVar(value=self.env.get("SMTP_USE_TLS", "false").lower() == "true")
 
         self.schedule_time = StringVar(value="09:00")
+        self.email_required_stars: list[Label] = []
+        self.email_inputs: list[ttk.Widget] = []
 
         self._build()
         self.log("Ready. Fill in credentials, save, then run tests.")
@@ -134,11 +165,12 @@ class SetupApp:
         frame = ttk.Frame(self.root, padding=16)
         frame.pack(fill="both", expand=True)
 
-        title = ttk.Label(frame, text="Literature Agent Setup", font=("Segoe UI", 18, "bold"))
+        title = ttk.Label(frame, text="Literature Agent Setup", style="Title.TLabel")
         title.pack(anchor="w")
         subtitle = ttk.Label(
             frame,
             text="Configure LLM, notification channels, and daily scheduling without editing files by hand.",
+            style="Muted.TLabel",
         )
         subtitle.pack(anchor="w", pady=(2, 14))
 
@@ -151,8 +183,10 @@ class SetupApp:
 
         button_bar = ttk.Frame(frame)
         button_bar.pack(fill="x", pady=(12, 8))
-        ttk.Button(button_bar, text="Save Configuration", command=self.save_config).pack(side="left")
-        ttk.Button(button_bar, text="Run Literature Test", command=self.run_literature_test).pack(side="left", padx=8)
+        ttk.Button(button_bar, text="Save Configuration", command=self.save_config, style="Primary.TButton").pack(side="left")
+        ttk.Button(button_bar, text="Run Literature Test", command=self.run_literature_test, style="Primary.TButton").pack(
+            side="left", padx=8
+        )
         ttk.Button(button_bar, text="Open Project Folder", command=self.open_project_folder).pack(side="right")
 
         self.output = Text(frame, height=11, wrap="word")
@@ -162,53 +196,107 @@ class SetupApp:
         tab = ttk.Frame(notebook, padding=14)
         notebook.add(tab, text="1. LLM")
 
-        self._entry(tab, "API Key", self.llm_api_key, show="*")
-        self._entry(tab, "Base URL", self.llm_base_url)
-        self._entry(tab, "Model", self.llm_model)
-        ttk.Button(tab, text="Test LLM", command=self.test_llm).grid(row=3, column=1, sticky="w", pady=10)
+        section = ttk.LabelFrame(tab, text="Model API", padding=14, style="Section.TLabelframe")
+        section.pack(fill="x", anchor="n")
+
+        self._entry(section, "API Key", self.llm_api_key, show="*", required=True)
+        self._entry(section, "Base URL", self.llm_base_url, required=True)
+        self._entry(section, "Model", self.llm_model, required=True)
+        ttk.Button(section, text="Test LLM", command=self.test_llm).grid(row=3, column=1, sticky="w", pady=10)
 
         note = (
             "Use an OpenAI-compatible endpoint. Base URL should look like "
             "https://provider.example.com/v1, not the full /chat/completions path."
         )
-        ttk.Label(tab, text=note, wraplength=650).grid(row=4, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        ttk.Label(section, text=note, wraplength=650, style="Muted.TLabel").grid(
+            row=4, column=0, columnspan=2, sticky="w", pady=(8, 0)
+        )
 
     def _build_notifications_tab(self, notebook: ttk.Notebook) -> None:
         tab = ttk.Frame(notebook, padding=14)
         notebook.add(tab, text="2. Notifications")
 
-        ttk.Checkbutton(tab, text="Enable Feishu", variable=self.feishu_enabled).grid(row=0, column=0, sticky="w")
-        self._entry(tab, "Feishu Webhook", self.feishu_webhook, row=1)
-        ttk.Button(tab, text="Test Feishu", command=self.test_feishu).grid(row=2, column=1, sticky="w", pady=(4, 16))
+        feishu_box = ttk.LabelFrame(tab, text="Feishu", padding=14, style="Section.TLabelframe")
+        feishu_box.pack(fill="x", anchor="n")
+        ttk.Checkbutton(feishu_box, text="Enable Feishu", variable=self.feishu_enabled).grid(row=0, column=0, sticky="w")
+        self._entry(feishu_box, "Webhook", self.feishu_webhook, row=1, required=True)
+        ttk.Button(feishu_box, text="Test Feishu", command=self.test_feishu).grid(row=2, column=1, sticky="w", pady=(4, 4))
 
-        ttk.Separator(tab).grid(row=3, column=0, columnspan=2, sticky="ew", pady=8)
-        ttk.Checkbutton(tab, text="Enable Email", variable=self.email_enabled).grid(row=4, column=0, sticky="w")
-        self._entry(tab, "Sender", self.email_sender, row=5)
-        self._entry(tab, "Recipients", self.email_recipients, row=6)
-        self._entry(tab, "SMTP Host", self.smtp_host, row=7)
-        self._entry(tab, "SMTP Port", self.smtp_port, row=8)
-        self._entry(tab, "SMTP Username", self.smtp_username, row=9)
-        self._entry(tab, "SMTP Password", self.smtp_password, row=10, show="*")
-        ttk.Checkbutton(tab, text="Use SSL", variable=self.smtp_ssl).grid(row=11, column=1, sticky="w", pady=(4, 0))
-        ttk.Checkbutton(tab, text="Use TLS", variable=self.smtp_tls).grid(row=12, column=1, sticky="w", pady=(4, 0))
-        ttk.Button(tab, text="Test Email", command=self.test_email).grid(row=13, column=1, sticky="w", pady=(10, 0))
+        email_box = ttk.LabelFrame(tab, text="Email", padding=14, style="Section.TLabelframe")
+        email_box.pack(fill="x", anchor="n", pady=(14, 0))
+        ttk.Checkbutton(email_box, text="Enable Email", variable=self.email_enabled, command=self._toggle_email_fields).grid(
+            row=0, column=0, sticky="w"
+        )
+
+        self.email_provider_combo = self._provider_combo(email_box, row=1, star_store=self.email_required_stars)
+        self.email_inputs.append(self._entry(email_box, "Email Address", self.email_address, row=2, required=True, star_store=self.email_required_stars))
+        self.email_inputs.append(
+            self._entry(
+                email_box,
+                "SMTP Authorization Code",
+                self.email_auth_code,
+                row=3,
+                show="*",
+                required=True,
+                star_store=self.email_required_stars,
+            )
+        )
+        self.email_inputs.append(self._entry(email_box, "Recipient (optional)", self.email_recipient, row=4))
+        ttk.Label(
+            email_box,
+            text="For QQ Mail, choose QQ Mail, enter the QQ email address and SMTP authorization code. Leave recipient empty to send to the same address.",
+            wraplength=650,
+            style="Muted.TLabel",
+        ).grid(
+            row=5, column=1, sticky="w", pady=(0, 6)
+        )
+        self.advanced_smtp_check = ttk.Checkbutton(
+            email_box,
+            text="Show advanced SMTP settings",
+            variable=self.show_advanced_smtp,
+            command=self._toggle_advanced_smtp,
+        )
+        self.advanced_smtp_check.grid(row=6, column=1, sticky="w", pady=(2, 4))
+
+        self.advanced_smtp_frame = ttk.Frame(email_box)
+        self.advanced_smtp_frame.grid(row=7, column=0, columnspan=2, sticky="ew")
+        self.email_inputs.append(
+            self._entry(self.advanced_smtp_frame, "SMTP Host", self.smtp_host, row=0, required=True, star_store=self.email_required_stars)
+        )
+        self.email_inputs.append(
+            self._entry(self.advanced_smtp_frame, "SMTP Port", self.smtp_port, row=1, required=True, star_store=self.email_required_stars)
+        )
+        ttk.Checkbutton(self.advanced_smtp_frame, text="Use SSL", variable=self.smtp_ssl).grid(
+            row=2, column=1, sticky="w", pady=(4, 0)
+        )
+        ttk.Checkbutton(self.advanced_smtp_frame, text="Use TLS", variable=self.smtp_tls).grid(
+            row=3, column=1, sticky="w", pady=(4, 0)
+        )
+        self.email_test_button = ttk.Button(email_box, text="Test Email", command=self.test_email)
+        self.email_test_button.grid(row=8, column=1, sticky="w", pady=(10, 0))
+        self._apply_email_provider()
+        self._toggle_advanced_smtp()
+        self._toggle_email_fields()
 
     def _build_schedule_tab(self, notebook: ttk.Notebook) -> None:
         tab = ttk.Frame(notebook, padding=14)
         notebook.add(tab, text="3. Schedule")
 
-        self._entry(tab, "Daily Time", self.schedule_time)
-        ttk.Label(tab, text="Use HH:MM format, for example 09:00.").grid(row=1, column=1, sticky="w")
-        ttk.Button(tab, text="Install / Update Windows Task", command=self.install_schedule).grid(
+        section = ttk.LabelFrame(tab, text="Daily Schedule", padding=14, style="Section.TLabelframe")
+        section.pack(fill="x", anchor="n")
+        self._entry(section, "Daily Time", self.schedule_time, required=True)
+        ttk.Label(section, text="Use HH:MM format, for example 09:00.").grid(row=1, column=1, sticky="w")
+        ttk.Button(section, text="Install / Update Windows Task", command=self.install_schedule).grid(
             row=2, column=1, sticky="w", pady=12
         )
         ttk.Label(
-            tab,
+            section,
             text=(
                 "The scheduled task runs on this computer. It will not run while the computer is powered off. "
                 "For cloud scheduling, use GitHub Actions or a server deployment."
             ),
             wraplength=650,
+            style="Muted.TLabel",
         ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(8, 0))
 
     def _entry(
@@ -218,15 +306,80 @@ class SetupApp:
         variable: StringVar,
         row: int | None = None,
         show: str | None = None,
-    ) -> None:
+        required: bool = False,
+        star_store: list[Label] | None = None,
+    ) -> ttk.Entry:
         if row is None:
             row = len(parent.grid_slaves()) // 2
-        ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", padx=(0, 12), pady=6)
+        label_frame = ttk.Frame(parent)
+        label_frame.grid(row=row, column=0, sticky="w", padx=(0, 12), pady=6)
+        if required:
+            star = Label(label_frame, text="*", fg="#d32f2f", bg="#f6f8fb")
+            star.pack(side="left", padx=(0, 3))
+            if star_store is not None:
+                star_store.append(star)
+        ttk.Label(label_frame, text=label).pack(side="left")
         entry = ttk.Entry(parent, textvariable=variable, width=70, show=show or "")
         entry.grid(row=row, column=1, sticky="ew", pady=6)
         parent.columnconfigure(1, weight=1)
+        return entry
+
+    def _provider_combo(self, parent: ttk.Frame, row: int, star_store: list[Label] | None = None) -> ttk.Combobox:
+        label_frame = ttk.Frame(parent)
+        label_frame.grid(row=row, column=0, sticky="w", padx=(0, 12), pady=6)
+        star = Label(label_frame, text="*", fg="#d32f2f", bg="#f6f8fb")
+        star.pack(side="left", padx=(0, 3))
+        if star_store is not None:
+            star_store.append(star)
+        ttk.Label(label_frame, text="Email Provider").pack(side="left")
+        combo = ttk.Combobox(
+            parent,
+            textvariable=self.email_provider,
+            values=list(EMAIL_PROVIDERS.keys()),
+            state="readonly",
+            width=28,
+        )
+        combo.grid(row=row, column=1, sticky="w", pady=6)
+        combo.bind("<<ComboboxSelected>>", lambda _event: self._apply_email_provider())
+        return combo
+
+    def _apply_email_provider(self) -> None:
+        provider = self.email_provider.get()
+        if provider == "Custom":
+            return
+        settings = EMAIL_PROVIDERS.get(provider, EMAIL_PROVIDERS["QQ Mail"])
+        self.smtp_host.set(settings["host"])
+        self.smtp_port.set(settings["port"])
+        self.smtp_ssl.set(bool(settings["ssl"]))
+        self.smtp_tls.set(bool(settings["tls"]))
+
+    def _toggle_advanced_smtp(self) -> None:
+        if self.show_advanced_smtp.get():
+            self.advanced_smtp_frame.grid()
+        else:
+            self.advanced_smtp_frame.grid_remove()
+
+    def _toggle_email_fields(self) -> None:
+        enabled = self.email_enabled.get()
+        entry_state = "normal" if enabled else "disabled"
+        combo_state = "readonly" if enabled else "disabled"
+        button_state = "normal" if enabled else "disabled"
+        star_color = "#d32f2f" if enabled else "#a0a7b4"
+
+        if hasattr(self, "email_provider_combo"):
+            self.email_provider_combo.configure(state=combo_state)
+        for widget in self.email_inputs:
+            widget.configure(state=entry_state)
+        if hasattr(self, "advanced_smtp_check"):
+            self.advanced_smtp_check.configure(state=button_state)
+        if hasattr(self, "email_test_button"):
+            self.email_test_button.configure(state=button_state)
+        for star in self.email_required_stars:
+            star.configure(fg=star_color)
 
     def collect_env(self) -> dict[str, str]:
+        self._apply_email_provider()
+        email_address = self.email_address.get().strip()
         return {
             "LLM_API_KEY": self.llm_api_key.get().strip(),
             "LLM_BASE_URL": self.llm_base_url.get().strip().rstrip("/"),
@@ -234,8 +387,8 @@ class SetupApp:
             "FEISHU_WEBHOOK": self.feishu_webhook.get().strip(),
             "SMTP_HOST": self.smtp_host.get().strip(),
             "SMTP_PORT": self.smtp_port.get().strip() or "465",
-            "SMTP_USERNAME": self.smtp_username.get().strip(),
-            "SMTP_PASSWORD": self.smtp_password.get().strip(),
+            "SMTP_USERNAME": email_address,
+            "SMTP_PASSWORD": self.email_auth_code.get().strip(),
             "SMTP_USE_SSL": str(self.smtp_ssl.get()).lower(),
             "SMTP_USE_TLS": str(self.smtp_tls.get()).lower(),
         }
@@ -249,8 +402,9 @@ class SetupApp:
         config.setdefault("feishu", {})["enabled"] = bool(self.feishu_enabled.get())
         email_config = config.setdefault("email", {})
         email_config["enabled"] = bool(self.email_enabled.get())
-        email_config["sender"] = self.email_sender.get().strip() or env_values["SMTP_USERNAME"]
-        recipients = [item.strip() for item in self.email_recipients.get().split(",") if item.strip()]
+        email_config["sender"] = env_values["SMTP_USERNAME"]
+        recipients_raw = self.email_recipient.get().strip() or env_values["SMTP_USERNAME"]
+        recipients = [item.strip() for item in recipients_raw.split(",") if item.strip()]
         email_config["recipients"] = recipients
 
         crossref = config.get("sources", {}).get("crossref", {})
