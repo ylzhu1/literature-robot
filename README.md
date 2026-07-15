@@ -46,6 +46,31 @@ The current MVP uses only the Python standard library.
 
 ## Configuration
 
+### GUI setup
+
+For Windows users, the easiest way to configure the project is the setup GUI:
+
+```powershell
+.\run_setup_gui.ps1
+```
+
+Users with Python available in `PATH` can also double-click:
+
+```text
+start_setup_gui.bat
+```
+
+The GUI can:
+
+- Save LLM, Feishu, and SMTP settings
+- Enable or disable Feishu and email delivery
+- Test LLM connectivity
+- Send a Feishu test message
+- Run a real literature test
+- Install or update the Windows scheduled task
+
+### Manual setup
+
 Create a private environment file from the template:
 
 ```powershell
@@ -86,6 +111,12 @@ Notification channels are controlled in `config.json`:
 Set `email.enabled` and `feishu.enabled` according to the deployment target. Both can be enabled at the same time.
 
 ## Run Manually
+
+Open the setup GUI:
+
+```powershell
+.\run_setup_gui.ps1
+```
 
 Generate a report and send it to the enabled channels:
 
