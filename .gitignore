@@ -5,6 +5,9 @@
 data/
 reports/
 logs/
+build/
+dist/
+*.spec
 
 # Python caches
 __pycache__/

@@ -17,7 +17,13 @@ from .models import LiteratureItem
 from .summarizer import summarize_items
 
 
-PROJECT_DIR = Path(__file__).resolve().parent.parent
+def project_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent.parent
+
+
+PROJECT_DIR = project_dir()
 CONFIG_PATH = PROJECT_DIR / "config.json"
 ENV_PATH = PROJECT_DIR / ".env"
 TASK_NAME = "LiteratureAgentDailyBrief"
@@ -290,14 +296,17 @@ class SetupApp:
 
     def _run_literature_test(self) -> str:
         self.save_config()
-        command = [
-            sys.executable,
-            "-m",
-            "literature_agent.main",
-            "--config",
-            "config.json",
-            "--ignore-seen",
-        ]
+        if getattr(sys, "frozen", False):
+            command = [sys.executable, "--run-daily", "--ignore-seen"]
+        else:
+            command = [
+                sys.executable,
+                "-m",
+                "literature_agent.main",
+                "--config",
+                "config.json",
+                "--ignore-seen",
+            ]
         completed = subprocess.run(
             command,
             cwd=str(PROJECT_DIR),
@@ -322,13 +331,19 @@ class SetupApp:
         if not config.get("feishu", {}).get("enabled") and not config.get("email", {}).get("enabled"):
             raise RuntimeError("Enable Feishu or Email before installing a scheduled task.")
 
-        argument = "-m literature_agent.main --config config.json"
+        if getattr(sys, "frozen", False):
+            execute = sys.executable
+            argument = "--run-daily"
+        else:
+            execute = sys.executable
+            argument = "-m literature_agent.main --config config.json"
+
         script = f"""
 $ErrorActionPreference = 'Stop'
 $ProjectDir = '{PROJECT_DIR}'
-$PythonExe = '{sys.executable}'
+$Executable = '{execute}'
 $TaskName = '{TASK_NAME}'
-$Action = New-ScheduledTaskAction -Execute $PythonExe -Argument '{argument}' -WorkingDirectory $ProjectDir
+$Action = New-ScheduledTaskAction -Execute $Executable -Argument '{argument}' -WorkingDirectory $ProjectDir
 $Trigger = New-ScheduledTaskTrigger -Daily -At {schedule_time}
 $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
 Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Description 'Daily Literature Agent report' -Force | Out-Null

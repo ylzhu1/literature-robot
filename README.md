@@ -160,6 +160,27 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 By default, the task runs daily at 10:00 and sends the report to Feishu.
 
+## Build A Windows App
+
+For lab users who should not interact with PowerShell or Python directly, build a Windows application bundle:
+
+```powershell
+.\scripts\build_windows_app.ps1
+```
+
+The build output is:
+
+```text
+dist/LiteratureAgent/
+  LiteratureAgentSetup.exe
+  config.json
+  .env.example
+  QUICK_START.md
+  ...
+```
+
+Share the whole `dist/LiteratureAgent` folder as a zip package. Users can double-click `LiteratureAgentSetup.exe`, fill in the required credentials, run the tests, and install the daily scheduled task from the GUI.
+
 ## Keyword Strategy
 
 The default configuration uses broad retrieval and stricter filtering.

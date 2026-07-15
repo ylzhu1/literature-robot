@@ -10,7 +10,7 @@ if %errorlevel% neq 0 (
   exit /b 1
 )
 
-python -m literature_agent.gui
+python -m literature_agent.app
 if %errorlevel% neq 0 (
   echo.
   echo Literature Agent Setup failed to start.
