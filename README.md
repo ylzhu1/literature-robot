@@ -144,22 +144,15 @@ Positive keyword groups include:
 
 Negative keywords reduce false positives from unrelated domains such as biological oxidation, wastewater treatment, machining, surface roughness prediction, antibacterial coatings, and bioinformatics.
 
-## Security Notes
+## Security
 
-Do not commit private credentials or runtime outputs. The repository is configured to ignore:
+Store API keys, webhooks, and SMTP credentials in `.env` for local use or in repository secrets for automated deployments. Runtime outputs are ignored by default.
 
-- `.env`
-- `data/`
-- `reports/`
-- `logs/`
+## Roadmap
 
-For GitHub Actions deployments, store credentials as repository secrets rather than files.
-
-## Development Roadmap
-
-- Add GitHub Actions scheduled deployment
-- Add Feishu card-style messages
-- Add RSSHub and journal-specific RSS sources
-- Add PDF / introduction / conclusion deep scan
-- Add weekly review mode
-- Add topic-specific configuration presets
+- GitHub Actions workflow for scheduled cloud execution
+- Feishu interactive card reports
+- RSSHub and journal-specific RSS integrations
+- PDF, introduction, and conclusion deep-scan summaries
+- Weekly digest and trend-review mode
+- Topic-specific configuration presets
