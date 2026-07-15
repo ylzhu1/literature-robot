@@ -9,6 +9,42 @@ if (-not (Test-Path $PythonExe)) {
 
 Set-Location $ProjectDir
 
+$PythonPrefix = (& $PythonExe -c "import sys; print(sys.prefix)").Trim()
+$CondaBin = Join-Path $PythonPrefix "Library\bin"
+$TclLib = Join-Path $PythonPrefix "Library\lib\tcl8.6"
+$TkLib = Join-Path $PythonPrefix "Library\lib\tk8.6"
+
+$BinaryArgs = @()
+foreach ($dll in @(
+  "tcl86t.dll",
+  "tk86t.dll",
+  "sqlite3.dll",
+  "libssl-3-x64.dll",
+  "libcrypto-3-x64.dll",
+  "liblzma.dll",
+  "libbz2.dll",
+  "libexpat.dll"
+)) {
+  $dllPath = Join-Path $CondaBin $dll
+  if (Test-Path $dllPath) {
+    $BinaryArgs += @("--add-binary", "$dllPath;.")
+  }
+}
+
+$DataArgs = @(
+  "--add-data", "README.md;.",
+  "--add-data", "config.json;.",
+  "--add-data", ".env.example;.",
+  "--add-data", "requirements.txt;.",
+  "--add-data", "scripts;scripts"
+)
+if (Test-Path $TclLib) {
+  $DataArgs += @("--add-data", "$TclLib;tcl\tcl8.6")
+}
+if (Test-Path $TkLib) {
+  $DataArgs += @("--add-data", "$TkLib;tcl\tk8.6")
+}
+
 Write-Host "Checking PyInstaller..."
 & $PythonExe -m PyInstaller --version *> $null
 if ($LASTEXITCODE -ne 0) {
@@ -24,11 +60,8 @@ Write-Host "Building LiteratureAgentSetup.exe..."
   --name LiteratureAgentSetup `
   --distpath dist `
   --workpath build `
-  --add-data "README.md;." `
-  --add-data "config.json;." `
-  --add-data ".env.example;." `
-  --add-data "requirements.txt;." `
-  --add-data "scripts;scripts" `
+  @BinaryArgs `
+  @DataArgs `
   literature_agent_app.py
 
 $ReleaseDir = Join-Path $ProjectDir "dist\LiteratureAgent"
