@@ -1,0 +1,258 @@
+{
+  "agent_name": "surface_oxidation_literature_agent",
+  "timezone": "Asia/Shanghai",
+  "lookback_days": 7,
+  "max_items_in_report": 8,
+  "min_score": 12,
+  "group_min_matches": 3,
+  "require_any_groups": [
+    "oxidation"
+  ],
+  "reports_dir": "reports",
+  "database_path": "data/literature_seen.sqlite",
+  "keyword_groups": {
+    "method": [
+      "machine learning potential",
+      "machine-learned potential",
+      "machine learning force field",
+      "neural network potential",
+      "interatomic potential",
+      "atomic cluster expansion",
+      "moment tensor potential",
+      "neuroevolution potential",
+      "NEP",
+      "GAP",
+      "MACE",
+      "CHGNet",
+      "M3GNet",
+      "Deep Potential",
+      "active learning",
+      "first-principles",
+      "first principles",
+      "ab initio",
+      "density functional theory",
+      "DFT",
+      "ab initio molecular dynamics",
+      "AIMD",
+      "molecular dynamics",
+      "grand canonical Monte Carlo",
+      "GCMC",
+      "kinetic Monte Carlo",
+      "KMC",
+      "nudged elastic band",
+      "NEB",
+      "surface phase diagram",
+      "metadynamics",
+      "reactive force field",
+      "ReaxFF"
+    ],
+    "oxidation": [
+      "oxidation",
+      "surface oxidation",
+      "oxygen adsorption",
+      "oxygen dissociation",
+      "oxide formation",
+      "oxide growth",
+      "oxide nucleation",
+      "initial oxidation",
+      "early-stage oxidation",
+      "oxygen incorporation",
+      "subsurface oxygen",
+      "oxide island",
+      "oxide overlayer",
+      "metal oxidation",
+      "copper oxidation",
+      "Cu oxidation",
+      "cuprous oxide",
+      "Cu2O",
+      "cupric oxide",
+      "CuO",
+      "oxygen vacancy",
+      "oxide scale"
+    ],
+    "surface_defect": [
+      "surface",
+      "facet",
+      "crystal facet",
+      "stepped surface",
+      "step edge",
+      "terrace",
+      "kink",
+      "adatom",
+      "grain boundary",
+      "dislocation",
+      "defect",
+      "vacancy",
+      "interface",
+      "surface reconstruction",
+      "nanoparticle",
+      "low-index surface",
+      "high-index surface",
+      "undercoordinated",
+      "low-coordinated",
+      "Cu(111)",
+      "Cu(100)",
+      "Cu(110)",
+      "Pt(111)",
+      "Pt(100)"
+    ],
+    "metal_system": [
+      "copper",
+      "Cu",
+      "platinum",
+      "Pt",
+      "nickel",
+      "Ni",
+      "titanium",
+      "Ti",
+      "silver",
+      "Ag",
+      "NiTi",
+      "transition metal",
+      "metal surface",
+      "alloy surface",
+      "Cu alloy",
+      "Pt surface",
+      "catalyst surface"
+    ],
+    "in_situ": [
+      "in situ",
+      "operando",
+      "environmental TEM",
+      "ETEM",
+      "ambient pressure XPS",
+      "AP-XPS",
+      "near ambient pressure XPS",
+      "NAP-XPS",
+      "in situ TEM",
+      "surface science"
+    ]
+  },
+  "strong_keywords": [
+    "machine learning potential",
+    "machine learning force field",
+    "neural network potential",
+    "density functional theory",
+    "surface oxidation",
+    "copper oxidation",
+    "oxygen adsorption",
+    "oxygen dissociation",
+    "oxide nucleation",
+    "oxide growth",
+    "subsurface oxygen",
+    "surface reconstruction",
+    "grand canonical Monte Carlo",
+    "stepped surface"
+  ],
+  "negative_keywords": [
+    "biological oxidation",
+    "photocatalytic degradation",
+    "battery cathode",
+    "wastewater",
+    "enzyme",
+    "plant",
+    "polymer oxidation",
+    "ammonia synthesis",
+    "nitrogen reduction",
+    "bioinformatics",
+    "biomarker",
+    "skeletal muscle",
+    "crowd dynamics",
+    "hard turning",
+    "turning process",
+    "cutting force",
+    "surface roughness",
+    "tool wear",
+    "antibacterial",
+    "cytocompatibility",
+    "infection",
+    "catechol",
+    "phenoxazinone",
+    "stampede",
+    "machine learning models for prediction of surface roughness"
+  ],
+  "sources": {
+    "arxiv": {
+      "enabled": true,
+      "max_results_per_query": 10,
+      "categories": [
+        "cond-mat.mtrl-sci",
+        "physics.chem-ph",
+        "physics.comp-ph",
+        "cond-mat.mes-hall"
+      ],
+      "query_terms": [
+        "machine learning potential metal oxidation",
+        "neural network potential surface oxidation",
+        "DFT oxygen adsorption copper surface",
+        "oxygen dissociation stepped surface DFT",
+        "oxide nucleation copper surface",
+        "grand canonical Monte Carlo oxygen adsorption surface",
+        "in situ TEM copper oxidation surface"
+      ]
+    },
+    "crossref": {
+      "enabled": true,
+      "max_results_per_query": 12,
+      "mailto": "your_email@example.com",
+      "query_terms": [
+        "machine learning potential metal surface oxidation",
+        "machine learned interatomic potential oxide growth",
+        "neural network potential oxygen adsorption metal surface",
+        "copper oxidation DFT surface",
+        "oxygen adsorption stepped surface DFT",
+        "oxygen dissociation copper surface density functional theory",
+        "oxide nucleation copper surface",
+        "DFT surface phase diagram oxygen adsorption metal",
+        "grand canonical Monte Carlo surface oxidation",
+        "operando AP-XPS copper surface oxidation",
+        "environmental TEM copper oxidation surface",
+        "platinum stepped surface AP-XPS oxygen adsorption"
+      ]
+    },
+    "openalex": {
+      "enabled": false,
+      "max_results_per_query": 25,
+      "mailto": "",
+      "query_terms": [
+        "machine learning potential surface oxidation",
+        "copper oxidation DFT surface",
+        "oxygen adsorption copper surface density functional theory",
+        "oxide growth metal surface molecular dynamics",
+        "stepped surface oxidation DFT",
+        "grand canonical Monte Carlo oxidation surface",
+        "in situ TEM copper oxidation"
+      ]
+    },
+    "rss": {
+      "enabled": false,
+      "feeds": [
+        {
+          "name": "Nature Computational Science",
+          "url": "https://www.nature.com/natcomputsci.rss"
+        },
+        {
+          "name": "npj Computational Materials",
+          "url": "https://www.nature.com/npjcompumats.rss"
+        }
+      ]
+    }
+  },
+  "email": {
+    "enabled": false,
+    "sender": "your_email@example.com",
+    "recipients": [
+      "your_email@example.com"
+    ],
+    "subject_prefix": "Literature Agent"
+  },
+  "feishu": {
+    "enabled": true
+  },
+  "llm": {
+    "enabled": true,
+    "api_key_env": "LLM_API_KEY",
+    "base_url_env": "LLM_BASE_URL",
+    "model_env": "LLM_MODEL"
+  }
+}

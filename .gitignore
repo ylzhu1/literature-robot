@@ -1,0 +1,27 @@
+# Local secrets
+.env
+
+# Runtime outputs
+data/
+reports/
+logs/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
