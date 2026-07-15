@@ -12,6 +12,7 @@ from tkinter import BooleanVar, StringVar, Text, Tk, messagebox
 from tkinter import ttk
 
 from .config import load_config
+from .email_sender import send_email
 from .feishu_sender import send_feishu
 from .models import LiteratureItem
 from .summarizer import summarize_items
@@ -104,9 +105,19 @@ class SetupApp:
 
         email_config = self.config.get("email", {})
         self.email_enabled = BooleanVar(value=bool(email_config.get("enabled", False)))
-        self.email_sender = StringVar(value=email_config.get("sender", self.env.get("SMTP_USERNAME", "")))
+        smtp_username = self.env.get("SMTP_USERNAME", "")
+        sender_value = email_config.get("sender", smtp_username)
+        if sender_value == "your_email@example.com" and smtp_username:
+            sender_value = smtp_username
+        self.email_sender = StringVar(value=sender_value)
         recipients = email_config.get("recipients", [])
-        self.email_recipients = StringVar(value=", ".join(recipients) if isinstance(recipients, list) else str(recipients))
+        if isinstance(recipients, list):
+            recipients_value = ", ".join(recipients)
+        else:
+            recipients_value = str(recipients)
+        if recipients_value == "your_email@example.com" and smtp_username:
+            recipients_value = smtp_username
+        self.email_recipients = StringVar(value=recipients_value)
         self.smtp_host = StringVar(value=self.env.get("SMTP_HOST", ""))
         self.smtp_port = StringVar(value=self.env.get("SMTP_PORT", "465"))
         self.smtp_username = StringVar(value=self.env.get("SMTP_USERNAME", ""))
@@ -180,6 +191,7 @@ class SetupApp:
         self._entry(tab, "SMTP Password", self.smtp_password, row=10, show="*")
         ttk.Checkbutton(tab, text="Use SSL", variable=self.smtp_ssl).grid(row=11, column=1, sticky="w", pady=(4, 0))
         ttk.Checkbutton(tab, text="Use TLS", variable=self.smtp_tls).grid(row=12, column=1, sticky="w", pady=(4, 0))
+        ttk.Button(tab, text="Test Email", command=self.test_email).grid(row=13, column=1, sticky="w", pady=(10, 0))
 
     def _build_schedule_tab(self, notebook: ttk.Notebook) -> None:
         tab = ttk.Frame(notebook, padding=14)
@@ -290,6 +302,18 @@ class SetupApp:
             config,
         )
         return "Feishu test message sent."
+
+    def test_email(self) -> None:
+        self._run_threaded("Testing Email...", self._test_email)
+
+    def _test_email(self) -> str:
+        self.save_config()
+        config = load_config(str(CONFIG_PATH))
+        send_email(
+            "Literature Agent email test\n\nIf you can see this message, SMTP delivery works.",
+            config,
+        )
+        return "Email test message sent."
 
     def run_literature_test(self) -> None:
         self._run_threaded("Running literature test. This may take a few minutes...", self._run_literature_test)
