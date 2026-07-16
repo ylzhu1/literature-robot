@@ -106,23 +106,53 @@ class SetupApp:
     def __init__(self, root: Tk) -> None:
         self.root = root
         self.root.title("Literature Agent Setup")
-        self.root.geometry("900x740")
-        self.root.minsize(780, 650)
-        self.root.configure(bg="#f6f8fb")
+        self.root.geometry("960x760")
+        self.root.minsize(820, 680)
+        self.colors = {
+            "bg": "#f4f7fb",
+            "panel": "#ffffff",
+            "border": "#d8e0ea",
+            "text": "#172033",
+            "muted": "#667085",
+            "primary": "#2563eb",
+            "primary_soft": "#eaf1ff",
+            "danger": "#d32f2f",
+            "disabled": "#a0a7b4",
+        }
+        self.root.configure(bg=self.colors["bg"])
 
         self.env = read_env()
         self.config = load_json_config()
 
         style = ttk.Style()
         try:
-            style.theme_use("clam")
+            available = set(style.theme_names())
+            for theme in ("vista", "xpnative", "clam", "alt"):
+                if theme in available:
+                    style.theme_use(theme)
+                    break
         except Exception:
             pass
-        style.configure("Title.TLabel", font=("Segoe UI", 18, "bold"))
-        style.configure("Muted.TLabel", foreground="#586174")
-        style.configure("Section.TLabelframe.Label", font=("Segoe UI", 10, "bold"))
-        style.configure("Primary.TButton", padding=(12, 6))
-        style.configure("TButton", padding=(9, 5))
+        style.configure("App.TFrame", background=self.colors["bg"])
+        style.configure("Banner.TFrame", background=self.colors["panel"])
+        style.configure("Panel.TFrame", background=self.colors["panel"])
+        style.configure("Title.TLabel", background=self.colors["panel"], foreground=self.colors["text"], font=("Segoe UI", 18, "bold"))
+        style.configure("Hero.TLabel", background=self.colors["panel"], foreground=self.colors["text"], font=("Segoe UI", 13, "bold"))
+        style.configure("Body.TLabel", background=self.colors["panel"], foreground=self.colors["text"], font=("Segoe UI", 10))
+        style.configure("Muted.TLabel", background=self.colors["panel"], foreground=self.colors["muted"])
+        style.configure("Section.TLabelframe", background=self.colors["panel"])
+        style.configure("Section.TLabelframe.Label", background=self.colors["panel"], foreground=self.colors["text"], font=("Segoe UI", 10, "bold"))
+        style.configure("TNotebook", background=self.colors["bg"], borderwidth=0)
+        style.configure("TNotebook.Tab", padding=(14, 8))
+        style.map("TNotebook.Tab", padding=[("selected", (14, 8))])
+        style.configure("Primary.TButton", padding=(12, 7), background=self.colors["primary"], foreground="white")
+        style.map(
+            "Primary.TButton",
+            background=[("active", "#1d4ed8"), ("disabled", "#93b2f5")],
+            foreground=[("disabled", "#f1f5f9")],
+        )
+        style.configure("TButton", padding=(10, 6))
+        style.configure("Output.TLabel", background=self.colors["panel"], foreground=self.colors["muted"], font=("Segoe UI", 9))
 
         self.llm_api_key = StringVar(value=self.env.get("LLM_API_KEY", ""))
         self.llm_base_url = StringVar(value=self.env.get("LLM_BASE_URL", "https://api.openai.com/v1"))
@@ -162,17 +192,25 @@ class SetupApp:
         self.log("Ready. Fill in credentials, save, then run tests.")
 
     def _build(self) -> None:
-        frame = ttk.Frame(self.root, padding=16)
+        frame = ttk.Frame(self.root, padding=18, style="App.TFrame")
         frame.pack(fill="both", expand=True)
 
-        title = ttk.Label(frame, text="Literature Agent Setup", style="Title.TLabel")
-        title.pack(anchor="w")
-        subtitle = ttk.Label(
-            frame,
-            text="Configure LLM, notification channels, and daily scheduling without editing files by hand.",
+        banner = ttk.Frame(frame, padding=(18, 16), style="Banner.TFrame")
+        banner.pack(fill="x", pady=(0, 14))
+        banner.columnconfigure(0, weight=1)
+        left = ttk.Frame(banner, style="Banner.TFrame")
+        left.grid(row=0, column=0, sticky="w")
+        ttk.Label(left, text="Literature Agent Setup", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(
+            left,
+            text="One place to configure paper crawling, Feishu, optional email, and the daily schedule.",
             style="Muted.TLabel",
-        )
-        subtitle.pack(anchor="w", pady=(2, 14))
+        ).pack(anchor="w", pady=(4, 0))
+        right = ttk.Frame(banner, style="Banner.TFrame")
+        right.grid(row=0, column=1, sticky="e")
+        self._badge(right, "Feishu", "#dbeafe", "#1d4ed8").pack(side="left", padx=(0, 8))
+        self._badge(right, "Email", "#ecfdf3", "#15803d").pack(side="left", padx=(0, 8))
+        self._badge(right, "Schedule", "#f3e8ff", "#7c3aed").pack(side="left")
 
         notebook = ttk.Notebook(frame)
         notebook.pack(fill="both", expand=True)
@@ -181,22 +219,42 @@ class SetupApp:
         self._build_notifications_tab(notebook)
         self._build_schedule_tab(notebook)
 
-        button_bar = ttk.Frame(frame)
-        button_bar.pack(fill="x", pady=(12, 8))
+        button_bar = ttk.Frame(frame, style="App.TFrame")
+        button_bar.pack(fill="x", pady=(14, 10))
         ttk.Button(button_bar, text="Save Configuration", command=self.save_config, style="Primary.TButton").pack(side="left")
         ttk.Button(button_bar, text="Run Literature Test", command=self.run_literature_test, style="Primary.TButton").pack(
             side="left", padx=8
         )
         ttk.Button(button_bar, text="Open Project Folder", command=self.open_project_folder).pack(side="right")
 
-        self.output = Text(frame, height=11, wrap="word")
-        self.output.pack(fill="both", expand=False)
+        output_panel = ttk.Frame(frame, padding=(16, 14), style="Panel.TFrame")
+        output_panel.pack(fill="both", expand=False)
+        ttk.Label(output_panel, text="Activity", style="Hero.TLabel").pack(anchor="w")
+        ttk.Label(
+            output_panel,
+            text="Tests, saves, and scheduled-task results appear here.",
+            style="Output.TLabel",
+        ).pack(anchor="w", pady=(2, 8))
+        self.output = Text(
+            output_panel,
+            height=11,
+            wrap="word",
+            bg=self.colors["panel"],
+            fg=self.colors["text"],
+            insertbackground=self.colors["text"],
+            relief="solid",
+            borderwidth=1,
+            highlightthickness=1,
+            highlightbackground=self.colors["border"],
+            highlightcolor=self.colors["primary"],
+        )
+        self.output.pack(fill="both", expand=True)
 
     def _build_llm_tab(self, notebook: ttk.Notebook) -> None:
-        tab = ttk.Frame(notebook, padding=14)
+        tab = ttk.Frame(notebook, padding=16, style="App.TFrame")
         notebook.add(tab, text="1. LLM")
 
-        section = ttk.LabelFrame(tab, text="Model API", padding=14, style="Section.TLabelframe")
+        section = ttk.LabelFrame(tab, text="Model API", padding=16, style="Section.TLabelframe")
         section.pack(fill="x", anchor="n")
 
         self._entry(section, "API Key", self.llm_api_key, show="*", required=True)
@@ -213,16 +271,16 @@ class SetupApp:
         )
 
     def _build_notifications_tab(self, notebook: ttk.Notebook) -> None:
-        tab = ttk.Frame(notebook, padding=14)
+        tab = ttk.Frame(notebook, padding=16, style="App.TFrame")
         notebook.add(tab, text="2. Notifications")
 
-        feishu_box = ttk.LabelFrame(tab, text="Feishu", padding=14, style="Section.TLabelframe")
+        feishu_box = ttk.LabelFrame(tab, text="Feishu", padding=16, style="Section.TLabelframe")
         feishu_box.pack(fill="x", anchor="n")
         ttk.Checkbutton(feishu_box, text="Enable Feishu", variable=self.feishu_enabled).grid(row=0, column=0, sticky="w")
         self._entry(feishu_box, "Webhook", self.feishu_webhook, row=1, required=True)
         ttk.Button(feishu_box, text="Test Feishu", command=self.test_feishu).grid(row=2, column=1, sticky="w", pady=(4, 4))
 
-        email_box = ttk.LabelFrame(tab, text="Email", padding=14, style="Section.TLabelframe")
+        email_box = ttk.LabelFrame(tab, text="Email", padding=16, style="Section.TLabelframe")
         email_box.pack(fill="x", anchor="n", pady=(14, 0))
         ttk.Checkbutton(email_box, text="Enable Email", variable=self.email_enabled, command=self._toggle_email_fields).grid(
             row=0, column=0, sticky="w"
@@ -279,10 +337,10 @@ class SetupApp:
         self._toggle_email_fields()
 
     def _build_schedule_tab(self, notebook: ttk.Notebook) -> None:
-        tab = ttk.Frame(notebook, padding=14)
+        tab = ttk.Frame(notebook, padding=16, style="App.TFrame")
         notebook.add(tab, text="3. Schedule")
 
-        section = ttk.LabelFrame(tab, text="Daily Schedule", padding=14, style="Section.TLabelframe")
+        section = ttk.LabelFrame(tab, text="Daily Schedule", padding=16, style="Section.TLabelframe")
         section.pack(fill="x", anchor="n")
         self._entry(section, "Daily Time", self.schedule_time, required=True)
         ttk.Label(section, text="Use HH:MM format, for example 09:00.").grid(row=1, column=1, sticky="w")
@@ -314,7 +372,7 @@ class SetupApp:
         label_frame = ttk.Frame(parent)
         label_frame.grid(row=row, column=0, sticky="w", padx=(0, 12), pady=6)
         if required:
-            star = Label(label_frame, text="*", fg="#d32f2f", bg="#f6f8fb")
+            star = Label(label_frame, text="*", fg=self.colors["danger"], bg=self.colors["panel"])
             star.pack(side="left", padx=(0, 3))
             if star_store is not None:
                 star_store.append(star)
@@ -327,7 +385,7 @@ class SetupApp:
     def _provider_combo(self, parent: ttk.Frame, row: int, star_store: list[Label] | None = None) -> ttk.Combobox:
         label_frame = ttk.Frame(parent)
         label_frame.grid(row=row, column=0, sticky="w", padx=(0, 12), pady=6)
-        star = Label(label_frame, text="*", fg="#d32f2f", bg="#f6f8fb")
+        star = Label(label_frame, text="*", fg=self.colors["danger"], bg=self.colors["panel"])
         star.pack(side="left", padx=(0, 3))
         if star_store is not None:
             star_store.append(star)
@@ -342,6 +400,18 @@ class SetupApp:
         combo.grid(row=row, column=1, sticky="w", pady=6)
         combo.bind("<<ComboboxSelected>>", lambda _event: self._apply_email_provider())
         return combo
+
+    def _badge(self, parent: ttk.Frame, text: str, bg: str, fg: str) -> Label:
+        return Label(
+            parent,
+            text=text,
+            bg=bg,
+            fg=fg,
+            font=("Segoe UI", 9, "bold"),
+            padx=10,
+            pady=4,
+            relief="flat",
+        )
 
     def _apply_email_provider(self) -> None:
         provider = self.email_provider.get()
