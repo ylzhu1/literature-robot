@@ -13,6 +13,7 @@ The default example configuration focuses on surface oxidation, density function
 - Send reports to Feishu custom bots
 - Optionally send reports by email through SMTP
 - Run manually or on a schedule with Windows Task Scheduler
+- Run the daily Feishu brief in GitHub Actions without keeping a local computer on
 
 ## Project Layout
 
@@ -161,7 +162,24 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\scripts\install_windows_task.ps1
 ```
 
-By default, the task runs daily at 10:00 and sends the report to Feishu.
+By default, the task runs daily at 09:00 and sends the report to Feishu.
+
+## Schedule With GitHub Actions
+
+The repository includes a GitHub Actions workflow at `.github/workflows/daily-literature-brief.yml`. It runs at 09:00 Asia/Shanghai time (01:00 UTC), fetches the literature brief in GitHub's cloud runner, and sends it to Feishu. A local computer does not need to stay on.
+
+Before enabling it, add these repository secrets in GitHub under `Settings` -> `Secrets and variables` -> `Actions` -> `New repository secret`:
+
+```text
+LLM_API_KEY
+LLM_BASE_URL
+LLM_MODEL
+FEISHU_WEBHOOK
+```
+
+Use the corresponding values from the private `.env` file. Do not put credentials in `config.json`, the workflow file, or a Git commit. The workflow restores and saves the SQLite seen-paper database through GitHub Actions cache so previously sent papers are not repeated during the lookback window.
+
+After the secrets are saved, open the repository's `Actions` tab, select `Daily Literature Brief`, and use `Run workflow` once to test it. GitHub scheduled runs can occasionally start a few minutes late; use a server-based scheduler when an exact-to-the-minute delivery guarantee is required.
 
 ## Build A Windows App
 
@@ -205,7 +223,6 @@ Store API keys, webhooks, and SMTP credentials in `.env` for local use or in rep
 
 ## Roadmap
 
-- GitHub Actions workflow for scheduled cloud execution
 - Feishu interactive card reports
 - RSSHub and journal-specific RSS integrations
 - PDF, introduction, and conclusion deep-scan summaries

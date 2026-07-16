@@ -1,0 +1,56 @@
+name: Daily Literature Brief
+
+on:
+  schedule:
+    # GitHub Actions uses UTC. 01:00 UTC is 09:00 in Asia/Shanghai (UTC+8).
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-literature-brief
+  cancel-in-progress: false
+
+jobs:
+  send-brief:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+      LLM_MODEL: ${{ secrets.LLM_MODEL }}
+      FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # The runner is temporary. Restore the SQLite database so papers sent on
+      # previous days are not sent again during the configured lookback period.
+      - name: Restore seen-paper database
+        uses: actions/cache/restore@v4
+        with:
+          path: data/literature_seen.sqlite
+          key: literature-seen-${{ github.run_id }}
+          restore-keys: |
+            literature-seen-
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip -r requirements.txt
+
+      - name: Fetch papers and send Feishu brief
+        run: python -m literature_agent.main --config config.json --send-feishu
+
+      - name: Save seen-paper database
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: data/literature_seen.sqlite
+          key: literature-seen-${{ github.run_id }}
