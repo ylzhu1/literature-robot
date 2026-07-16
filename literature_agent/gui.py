@@ -8,7 +8,7 @@ import sys
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from tkinter import BooleanVar, Label, StringVar, Text, Tk, messagebox
+from tkinter import BooleanVar, Button, Label, StringVar, Text, Tk, messagebox
 from tkinter import ttk
 
 from .config import load_config
@@ -221,11 +221,9 @@ class SetupApp:
 
         button_bar = ttk.Frame(frame, style="App.TFrame")
         button_bar.pack(fill="x", pady=(14, 10))
-        ttk.Button(button_bar, text="Save Configuration", command=self.save_config, style="Primary.TButton").pack(side="left")
-        ttk.Button(button_bar, text="Run Literature Test", command=self.run_literature_test, style="Primary.TButton").pack(
-            side="left", padx=8
-        )
-        ttk.Button(button_bar, text="Open Project Folder", command=self.open_project_folder).pack(side="right")
+        self._action_button(button_bar, "Save Configuration", self.save_config, primary=True).pack(side="left")
+        self._action_button(button_bar, "Run Literature Test", self.run_literature_test, primary=True).pack(side="left", padx=8)
+        self._action_button(button_bar, "Open Project Folder", self.open_project_folder).pack(side="right")
 
         output_panel = ttk.Frame(frame, padding=(16, 14), style="Panel.TFrame")
         output_panel.pack(fill="both", expand=False)
@@ -411,6 +409,32 @@ class SetupApp:
             padx=10,
             pady=4,
             relief="flat",
+        )
+
+    def _action_button(self, parent: ttk.Frame, text: str, command, primary: bool = False) -> Button:
+        bg = self.colors["primary"] if primary else self.colors["panel"]
+        fg = "white" if primary else self.colors["text"]
+        active_bg = "#1d4ed8" if primary else "#eef2f7"
+        active_fg = "white" if primary else self.colors["text"]
+        return Button(
+            parent,
+            text=text,
+            command=command,
+            bg=bg,
+            fg=fg,
+            activebackground=active_bg,
+            activeforeground=active_fg,
+            disabledforeground=self.colors["disabled"],
+            relief="flat",
+            bd=0,
+            padx=18,
+            pady=8,
+            font=("Segoe UI", 9, "bold"),
+            cursor="hand2",
+            highlightthickness=1,
+            highlightbackground=self.colors["border"],
+            highlightcolor=self.colors["primary"],
+            takefocus=True,
         )
 
     def _apply_email_provider(self) -> None:
