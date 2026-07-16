@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 import ssl
+import subprocess
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -70,7 +72,53 @@ def _post_text(webhook: str, text: str) -> None:
             if attempt == 2:
                 break
             time.sleep(1.5 * (attempt + 1))
-    raise RuntimeError(f"Feishu send failed after retries: {last_error}")
+    try:
+        _post_text_with_curl(webhook, payload)
+        return
+    except Exception as curl_error:
+        raise RuntimeError(
+            f"Feishu send failed after urllib retries: {last_error}; curl fallback failed: {curl_error}"
+        ) from curl_error
+
+
+def _post_text_with_curl(webhook: str, payload: bytes) -> None:
+    if os.name != "nt":
+        raise RuntimeError("curl fallback is only enabled on Windows")
+
+    temp_dir = tempfile.gettempdir()
+    timestamp = f"{int(time.time() * 1000)}"
+    payload_path = os.path.join(temp_dir, f"literature_agent_feishu_{timestamp}.json")
+    config_path = os.path.join(temp_dir, f"literature_agent_curl_{timestamp}.conf")
+    curl_payload_path = payload_path.replace("\\", "/")
+    try:
+        with open(payload_path, "wb") as fh:
+            fh.write(payload)
+        with open(config_path, "w", encoding="utf-8") as fh:
+            fh.write("silent\n")
+            fh.write("show-error\n")
+            fh.write("fail-with-body\n")
+            fh.write("request = \"POST\"\n")
+            fh.write("header = \"Content-Type: application/json\"\n")
+            fh.write(f"data-binary = \"@{curl_payload_path}\"\n")
+            fh.write(f"url = \"{webhook}\"\n")
+
+        completed = subprocess.run(
+            ["curl.exe", "--config", config_path],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=45,
+        )
+        if completed.returncode != 0:
+            output = ((completed.stdout or "") + (completed.stderr or "")).strip()
+            raise RuntimeError(output or f"curl exited with code {completed.returncode}")
+    finally:
+        for path in (payload_path, config_path):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
 
 
 def send_feishu(report: str, config: Dict[str, Any]) -> None:
