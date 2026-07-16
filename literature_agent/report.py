@@ -45,7 +45,9 @@ def build_report(summaries: List[ItemSummary], agent_name: str) -> str:
                 f"- DOI：{item.doi or 'N/A'}",
                 f"- 链接：{item.url}",
                 "",
-                f"核心思路：{summary.summary_text}",
+                "### 论文解读（基于标题与摘要）",
+                "",
+                summary.summary_text,
                 "",
             ]
         )

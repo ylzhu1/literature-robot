@@ -1,20 +1,25 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
-import re
 import shutil
 import subprocess
 import tempfile
+import urllib.error
 import urllib.request
 from typing import Any, Dict, List
 
 from .models import ItemSummary, LiteratureItem
 
 
-def _split_sentences(text: str) -> List[str]:
-    parts = re.split(r"(?<=[.!?])\s+", text.strip())
-    return [part.strip() for part in parts if part.strip()]
+GROUP_LABELS = {
+    "method": "计算或建模方法",
+    "oxidation": "氧化过程",
+    "surface_defect": "表面结构或缺陷",
+    "metal_system": "金属或合金体系",
+    "in_situ": "原位表征",
+}
 
 
 def _relevance_label(score: int) -> str:
@@ -25,148 +30,121 @@ def _relevance_label(score: int) -> str:
     return "watch"
 
 
-KEYWORD_CN = {
-    "machine learning potential": "机器学习势",
-    "machine-learned potential": "机器学习势",
-    "machine learning force field": "机器学习力场",
-    "neural network potential": "神经网络势",
-    "interatomic potential": "原子间势",
-    "active learning": "主动学习",
-    "density functional theory": "DFT/密度泛函理论",
-    "DFT": "DFT/密度泛函理论",
-    "ab initio molecular dynamics": "从头算分子动力学",
-    "AIMD": "AIMD",
-    "molecular dynamics": "分子动力学",
-    "grand canonical Monte Carlo": "巨正则蒙特卡洛",
-    "GCMC": "GCMC",
-    "kinetic Monte Carlo": "动力学蒙特卡洛",
-    "KMC": "KMC",
-    "oxidation": "氧化",
-    "surface oxidation": "表面氧化",
-    "oxygen adsorption": "氧吸附",
-    "oxygen dissociation": "氧解离",
-    "oxide formation": "氧化物形成",
-    "oxide growth": "氧化物生长",
-    "oxide nucleation": "氧化物成核",
-    "metal oxidation": "金属氧化",
-    "copper oxidation": "铜氧化",
-    "Cu oxidation": "铜氧化",
-    "oxygen vacancy": "氧空位",
-    "surface": "表面",
-    "facet": "晶面",
-    "crystal facet": "晶面",
-    "stepped surface": "台阶表面",
-    "step edge": "台阶边",
-    "terrace": "平台区",
-    "grain boundary": "晶界",
-    "dislocation": "位错",
-    "defect": "缺陷",
-    "vacancy": "空位",
-    "interface": "界面",
-    "nanoparticle": "纳米颗粒",
-    "low-index surface": "低指数晶面",
-    "high-index surface": "高指数晶面",
-    "copper": "铜",
-    "Cu": "铜",
-    "platinum": "铂",
-    "Pt": "铂",
-    "transition metal": "过渡金属",
-    "metal surface": "金属表面",
-    "alloy surface": "合金表面",
-    "Cu alloy": "铜合金",
-    "Pt surface": "铂表面",
-    "in situ": "原位表征",
-    "operando": "工况/原位表征",
-    "environmental TEM": "环境透射电镜",
-    "ETEM": "环境透射电镜",
-    "ambient pressure XPS": "常压/近常压 XPS",
-    "AP-XPS": "常压/近常压 XPS",
-    "near ambient pressure XPS": "近常压 XPS",
-    "NAP-XPS": "近常压 XPS",
-    "in situ TEM": "原位 TEM",
-}
-
-
-def _cn_hits(item: LiteratureItem, group: str, limit: int = 3) -> List[str]:
-    hits = []
-    for keyword in item.matched_groups.get(group, []):
-        hits.append(KEYWORD_CN.get(keyword, keyword))
-    unique = []
-    for hit in hits:
-        if hit and hit not in unique:
-            unique.append(hit)
-    return unique[:limit]
-
-
-def _extract_material_tokens(item: LiteratureItem) -> List[str]:
-    text = f"{item.title} {item.abstract}"
-    candidates = ["Cu", "Cu2O", "CuO", "Pt", "NiTi", "Ag", "Bi", "MnO2", "Fe", "Ti", "Ni", "AlCuFe"]
-    found = []
-    for token in candidates:
-        if token in text and token not in found:
-            found.append(token)
-    return found[:4]
+def _joined_hits(item: LiteratureItem, group: str, limit: int = 4) -> str:
+    hits = item.matched_groups.get(group, [])[:limit]
+    return "、".join(hits) if hits else "摘要未明确说明"
 
 
 def _fallback_summary(item: LiteratureItem) -> ItemSummary:
-    methods = _cn_hits(item, "method")
-    oxidation = _cn_hits(item, "oxidation")
-    surface = _cn_hits(item, "surface_defect")
-    systems = _cn_hits(item, "metal_system")
-    materials = _extract_material_tokens(item)
+    """Produce a truthful, useful report when the configured LLM is unavailable."""
+    matched_topics = "、".join(
+        GROUP_LABELS[group]
+        for group in item.matched_groups
+        if group in GROUP_LABELS
+    ) or "材料与表面科学"
+    method = _joined_hits(item, "method")
+    oxidation = _joined_hits(item, "oxidation")
+    system = _joined_hits(item, "metal_system")
+    structure = _joined_hits(item, "surface_defect")
 
-    system_desc = "、".join(materials or systems) or "金属/氧化物体系"
-    oxidation_desc = "、".join(oxidation) or "氧化相关过程"
-    surface_desc = "、".join(surface) or "表面结构"
-    method_desc = "、".join(methods)
-
-    text = f"这篇文章主要关注 {system_desc} 中的 {oxidation_desc}，重点放在 {surface_desc} 对反应或结构演化的影响。"
-    if method_desc:
-        text += f" 方法上涉及 {method_desc}，适合用来了解不同表面条件下氧吸附、氧化物形成或氧化动力学的机制。"
-    else:
-        text += " 它更偏向实验或材料现象报道，可作为理解表面氧化行为的背景参考。"
+    text = "\n".join(
+        [
+            f"**论文概述**：该论文的标题和摘要与{matched_topics}有关，重点命中了{oxidation}等主题。",
+            f"**研究对象与方法**：摘要中涉及的体系包括{system}；可确认的方法线索为{method}。",
+            f"**表面与结构线索**：摘要中出现{structure}。具体的反应路径、定量结果和作者结论需要以原文摘要或全文为准。",
+            "**信息边界**：模型摘要调用未成功，本条仅根据检索元数据生成，不应视为论文的完整机制解读。",
+        ]
+    )
     return ItemSummary(item=item, summary_text=text, relevance=_relevance_label(item.score))
+
+
+def _completion_url(base_url: str) -> str:
+    normalized = base_url.rstrip("/")
+    if normalized.endswith("/chat/completions"):
+        return normalized
+    return f"{normalized}/chat/completions"
+
+
+def _build_prompt(item: LiteratureItem) -> str:
+    return f"""
+请以严谨的材料计算与表面科学研究者身份，解读下面一篇论文。你的回答会直接发给课题组阅读。
+
+严格约束：
+1. 只能使用标题和摘要中明确给出的信息，不得根据常识补充不存在的实验、数值、机理或性能结论。
+2. 若摘要没有说明某项内容，直接写“摘要未说明”，不要猜测。
+3. 不要输出“相关度”“命中关键词”“对你的方向”“建议阅读”等栏目。
+4. 使用简体中文，保留 DFT、MLIP、GCMC、AIMD 等必要英文缩写。
+5. 总长度控制在 300 至 500 个汉字左右，信息密度高但不要堆砌术语。
+
+请严格按下面的 Markdown 格式输出，不要添加标题以外的开场白：
+
+**中文概述**：用一段话说明论文研究了什么问题、研究对象是什么、采用什么总体思路。
+
+### 💡 深度解读
+
+1. **研究问题**：说明作者希望解决或解释的科学问题。
+2. **方法与体系**：说明研究的材料/表面/结构对象，以及实验、计算或理论方法。
+3. **核心创新或机制**：说明论文提出的新方法、新认识或机制；摘要信息不足时明确说明。
+4. **关键结论**：概括摘要中可确认的主要发现；没有明确结论时写“摘要未说明”。
+
+论文标题：{item.title}
+来源：{item.venue or item.source}
+摘要：{item.abstract[:5000]}
+""".strip()
+
+
+def _extract_content(payload: Dict[str, Any]) -> str:
+    try:
+        content = payload["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise RuntimeError("LLM response does not contain choices[0].message.content") from exc
+
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        text_parts = [
+            part.get("text", "")
+            for part in content
+            if isinstance(part, dict) and isinstance(part.get("text"), str)
+        ]
+        return "".join(text_parts).strip()
+    raise RuntimeError("LLM response content is not text")
 
 
 def _call_openai_compatible(item: LiteratureItem, config: Dict[str, Any]) -> str:
     llm_config = config.get("llm", {})
     api_key = os.environ.get(llm_config.get("api_key_env", "LLM_API_KEY"), "")
-    base_url = os.environ.get(llm_config.get("base_url_env", "LLM_BASE_URL"), "https://api.openai.com/v1").rstrip("/")
+    base_url = os.environ.get(
+        llm_config.get("base_url_env", "LLM_BASE_URL"),
+        "https://api.openai.com/v1",
+    )
     model = os.environ.get(llm_config.get("model_env", "LLM_MODEL"), "gpt-4.1-mini")
     if not api_key:
         raise RuntimeError("LLM API key is not configured")
-
-    prompt = f"""
-请用中文为下面这篇文献写一个简短但有判断力的摘要。研究背景是：
-用户关注机器学习势、DFT、分子动力学、GCMC，用于研究金属/铜/铂等表面氧化、氧吸附、氧化物成核、生长机制，以及晶面、台阶、位错、缺陷对氧化路径的影响。
-
-请只输出一段中文“核心思路”，不要分点，不要输出“相关线索”，不要输出“对你的方向”。
-重点说明：这篇文章研究了什么问题，用了什么方法/体系，得到的主要机制或启发是什么。
-
-标题：{item.title}
-来源：{item.venue or item.source}
-摘要：{item.abstract[:4000]}
-命中关键词：{", ".join(item.matched_keywords[:12])}
-""".strip()
 
     body = json.dumps(
         {
             "model": model,
             "messages": [
                 {
-                    "role": "user",
-                    "content": "你是一个严谨的材料计算与表面科学文献助理。\n\n" + prompt,
+                    "role": "system",
+                    "content": "You are a precise scientific literature analyst. Follow the user's output format exactly and never invent facts beyond the supplied title and abstract.",
                 },
+                {"role": "user", "content": _build_prompt(item)},
             ],
-            "temperature": 0.2,
-        }
+            "temperature": 0.15,
+        },
+        ensure_ascii=False,
     ).encode("utf-8")
 
     if os.name == "nt":
-        return _call_openai_compatible_via_powershell(body, api_key, base_url)
+        return _call_via_powershell(body, api_key, _completion_url(base_url))
+    return _call_via_urllib(body, api_key, _completion_url(base_url))
 
+
+def _call_via_urllib(body: bytes, api_key: str, url: str) -> str:
     request = urllib.request.Request(
-        f"{base_url}/chat/completions",
+        url,
         data=body,
         headers={
             "Authorization": f"Bearer {api_key}",
@@ -174,30 +152,36 @@ def _call_openai_compatible(item: LiteratureItem, config: Dict[str, Any]) -> str
         },
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=60) as response:
-        payload = json.loads(response.read().decode("utf-8"))
-    return payload["choices"][0]["message"]["content"].strip()
+    try:
+        with urllib.request.urlopen(request, timeout=90) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace").strip()
+        raise RuntimeError(f"LLM request failed with HTTP {exc.code}: {detail[:500]}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"LLM network request failed: {exc.reason}") from exc
+    return _extract_content(payload)
 
 
-def _call_openai_compatible_via_powershell(body: bytes, api_key: str, base_url: str) -> str:
+def _call_via_powershell(body: bytes, api_key: str, url: str) -> str:
+    """Keep the Windows transport fallback used by the local desktop workflow."""
     powershell = shutil.which("powershell.exe") or shutil.which("powershell")
     if not powershell:
-        raise RuntimeError("powershell is not available on this system")
+        raise RuntimeError("PowerShell is not available for the Windows LLM request")
 
-    with tempfile.NamedTemporaryFile("wb", delete=False, suffix=".json") as tmp:
-        tmp.write(body)
-        payload_path = tmp.name
+    with tempfile.NamedTemporaryFile("wb", delete=False, suffix=".json") as temporary:
+        temporary.write(body)
+        payload_path = temporary.name
 
     try:
         script = f"""
 $ErrorActionPreference = 'Stop'
 $headers = @{{ Authorization = 'Bearer {api_key}'; 'Content-Type' = 'application/json' }}
 $body = Get-Content -Raw -Path '{payload_path}'
-$response = Invoke-RestMethod -Method Post -Uri '{base_url}/chat/completions' -Headers $headers -Body $body
+$response = Invoke-RestMethod -Method Post -Uri '{url}' -Headers $headers -Body $body
 $response | ConvertTo-Json -Depth 20 -Compress
 """
-        encoded = script.encode("utf-16le")
-        encoded_command = __import__("base64").b64encode(encoded).decode("ascii")
+        encoded_command = base64.b64encode(script.encode("utf-16le")).decode("ascii")
         completed = subprocess.run(
             [powershell, "-NoProfile", "-EncodedCommand", encoded_command],
             capture_output=True,
@@ -208,9 +192,8 @@ $response | ConvertTo-Json -Depth 20 -Compress
             stderr = (completed.stderr or b"").decode("utf-8", errors="replace").strip()
             stdout = (completed.stdout or b"").decode("utf-8", errors="replace").strip()
             raise RuntimeError(stderr or stdout or f"PowerShell request failed with code {completed.returncode}")
-        stdout = (completed.stdout or b"").decode("utf-8", errors="replace").strip()
-        payload = json.loads(stdout)
-        return payload["choices"][0]["message"]["content"].strip()
+        payload = json.loads((completed.stdout or b"").decode("utf-8", errors="replace"))
+        return _extract_content(payload)
     finally:
         try:
             os.remove(payload_path)
@@ -228,6 +211,6 @@ def summarize_items(items: List[LiteratureItem], config: Dict[str, Any]) -> List
                 summaries.append(ItemSummary(item=item, summary_text=text, relevance=_relevance_label(item.score)))
                 continue
             except Exception as exc:
-                print(f"[warn] LLM summary failed for '{item.title[:60]}': {exc}; using fallback.")
+                print(f"[warn] LLM summary failed for '{item.title[:60]}': {exc}; using metadata fallback.")
         summaries.append(_fallback_summary(item))
     return summaries
