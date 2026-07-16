@@ -36,23 +36,14 @@ def _joined_hits(item: LiteratureItem, group: str, limit: int = 4) -> str:
 
 
 def _fallback_summary(item: LiteratureItem) -> ItemSummary:
-    """Produce a truthful, useful report when the configured LLM is unavailable."""
-    matched_topics = "、".join(
-        GROUP_LABELS[group]
-        for group in item.matched_groups
-        if group in GROUP_LABELS
-    ) or "材料与表面科学"
-    method = _joined_hits(item, "method")
-    oxidation = _joined_hits(item, "oxidation")
-    system = _joined_hits(item, "metal_system")
-    structure = _joined_hits(item, "surface_defect")
-
+    """Never pretend that keyword matches are a scientific interpretation."""
     text = "\n".join(
         [
-            f"**论文概述**：该论文的标题和摘要与{matched_topics}有关，重点命中了{oxidation}等主题。",
-            f"**研究对象与方法**：摘要中涉及的体系包括{system}；可确认的方法线索为{method}。",
-            f"**表面与结构线索**：摘要中出现{structure}。具体的反应路径、定量结果和作者结论需要以原文摘要或全文为准。",
-            "**信息边界**：模型摘要调用未成功，本条仅根据检索元数据生成，不应视为论文的完整机制解读。",
+            "### 中文摘要",
+            "模型服务本次未能完成中文翻译，原始英文摘要保留在上方。",
+            "",
+            "### 💡 深度解读",
+            "模型服务本次未能完成论文解读。为避免把关键词匹配误写成研究结论，本条不生成推测性的解析。请在下一次运行后重试，或查看工作流日志中的 LLM 错误信息。",
         ]
     )
     return ItemSummary(item=item, summary_text=text, relevance=_relevance_label(item.score))
@@ -74,11 +65,13 @@ def _build_prompt(item: LiteratureItem) -> str:
 2. 若摘要没有说明某项内容，直接写“摘要未说明”，不要猜测。
 3. 不要输出“相关度”“命中关键词”“对你的方向”“建议阅读”等栏目。
 4. 使用简体中文，保留 DFT、MLIP、GCMC、AIMD 等必要英文缩写。
-5. 总长度控制在 300 至 500 个汉字左右，信息密度高但不要堆砌术语。
+5. 总长度控制在 350 至 550 个汉字左右，信息密度高但不要堆砌术语。
 
 请严格按下面的 Markdown 格式输出，不要添加标题以外的开场白：
 
-**中文概述**：用一段话说明论文研究了什么问题、研究对象是什么、采用什么总体思路。
+### 中文摘要
+
+将英文摘要完整、准确地翻译为自然的中文段落。不要压缩成关键词，不要加入摘要中没有的信息。
 
 ### 💡 深度解读
 
@@ -137,9 +130,19 @@ def _call_openai_compatible(item: LiteratureItem, config: Dict[str, Any]) -> str
         ensure_ascii=False,
     ).encode("utf-8")
 
+    url = _completion_url(base_url)
     if os.name == "nt":
-        return _call_via_powershell(body, api_key, _completion_url(base_url))
-    return _call_via_urllib(body, api_key, _completion_url(base_url))
+        return _call_via_powershell(body, api_key, url)
+
+    try:
+        return _call_via_urllib(body, api_key, url)
+    except Exception as urllib_error:
+        try:
+            return _call_via_curl(body, api_key, url)
+        except Exception as curl_error:
+            raise RuntimeError(
+                f"LLM request failed through urllib ({urllib_error}) and curl ({curl_error})"
+            ) from curl_error
 
 
 def _call_via_urllib(body: bytes, api_key: str, url: str) -> str:
@@ -161,6 +164,42 @@ def _call_via_urllib(body: bytes, api_key: str, url: str) -> str:
     except urllib.error.URLError as exc:
         raise RuntimeError(f"LLM network request failed: {exc.reason}") from exc
     return _extract_content(payload)
+
+
+def _call_via_curl(body: bytes, api_key: str, url: str) -> str:
+    """Use curl as a Linux fallback when an OpenAI-compatible endpoint rejects urllib TLS."""
+    curl = shutil.which("curl") or shutil.which("curl.exe")
+    if not curl:
+        raise RuntimeError("curl is not available")
+
+    with tempfile.TemporaryDirectory(prefix="literature_agent_llm_") as temporary_dir:
+        payload_path = os.path.join(temporary_dir, "request.json")
+        config_path = os.path.join(temporary_dir, "curl.conf")
+        with open(payload_path, "wb") as payload_file:
+            payload_file.write(body)
+        with open(config_path, "w", encoding="utf-8") as config_file:
+            config_file.write("silent\nshow-error\nfail-with-body\n")
+            config_file.write('request = "POST"\n')
+            config_file.write('header = "Content-Type: application/json"\n')
+            config_file.write(f'header = "Authorization: Bearer {api_key}"\n')
+            config_file.write(f'data-binary = "@{payload_path.replace(chr(92), "/")}"\n')
+            config_file.write(f'url = "{url}"\n')
+
+        completed = subprocess.run(
+            [curl, "--config", config_path],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+        )
+        if completed.returncode != 0:
+            detail = ((completed.stdout or "") + (completed.stderr or "")).strip()
+            raise RuntimeError(detail[:500] or f"curl exited with code {completed.returncode}")
+        try:
+            return _extract_content(json.loads(completed.stdout))
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"curl returned non-JSON output: {completed.stdout[:500]}") from exc
 
 
 def _call_via_powershell(body: bytes, api_key: str, url: str) -> str:

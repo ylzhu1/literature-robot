@@ -14,6 +14,10 @@ def _fmt_date(summary: ItemSummary) -> str:
     return published.date().isoformat()
 
 
+def _blockquote(text: str) -> str:
+    return "\n".join(f"> {line}" if line else ">" for line in text.splitlines())
+
+
 def build_report(summaries: List[ItemSummary], agent_name: str) -> str:
     today = datetime.now().strftime("%Y-%m-%d")
     if not summaries:
@@ -45,7 +49,11 @@ def build_report(summaries: List[ItemSummary], agent_name: str) -> str:
                 f"- DOI：{item.doi or 'N/A'}",
                 f"- 链接：{item.url}",
                 "",
-                "### 论文解读（基于标题与摘要）",
+                "### 摘要原文",
+                "",
+                _blockquote(item.abstract or "Abstract unavailable."),
+                "",
+                "### 中文摘要与深度解读",
                 "",
                 summary.summary_text,
                 "",
