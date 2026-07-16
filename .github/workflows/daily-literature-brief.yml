@@ -5,6 +5,12 @@ on:
     # GitHub Actions uses UTC. 01:00 UTC is 09:00 in Asia/Shanghai (UTC+8).
     - cron: "0 1 * * *"
   workflow_dispatch:
+    inputs:
+      resend_seen:
+        description: "Include papers that were already sent (manual preview only)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -46,7 +52,12 @@ jobs:
         run: python -m pip install --upgrade pip -r requirements.txt
 
       - name: Fetch papers and send Feishu brief
-        run: python -m literature_agent.main --config config.json --send-feishu
+        run: |
+          if [ "${{ inputs.resend_seen }}" = "true" ]; then
+            python -m literature_agent.main --config config.json --send-feishu --ignore-seen
+          else
+            python -m literature_agent.main --config config.json --send-feishu
+          fi
 
       - name: Save seen-paper database
         if: success()

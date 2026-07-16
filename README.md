@@ -179,7 +179,7 @@ FEISHU_WEBHOOK
 
 Use the corresponding values from the private `.env` file. Do not put credentials in `config.json`, the workflow file, or a Git commit. The workflow restores and saves the SQLite seen-paper database through GitHub Actions cache so previously sent papers are not repeated during the lookback window.
 
-After the secrets are saved, open the repository's `Actions` tab, select `Daily Literature Brief`, and use `Run workflow` once to test it. GitHub scheduled runs can occasionally start a few minutes late; use a server-based scheduler when an exact-to-the-minute delivery guarantee is required.
+After the secrets are saved, open the repository's `Actions` tab, select `Daily Literature Brief`, and use `Run workflow` once to test it. Enable `resend_seen` only when manually previewing a changed report format; the normal scheduled run keeps deduplication enabled. GitHub scheduled runs can occasionally start a few minutes late; use a server-based scheduler when an exact-to-the-minute delivery guarantee is required.
 
 ## Build A Windows App
 
