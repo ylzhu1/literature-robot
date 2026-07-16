@@ -1,2 +1,2 @@
-# The first MVP intentionally uses only the Python standard library.
-# Python 3.10+ is recommended.
+# The desktop application and scheduled workflow use the Python standard library.
+# PyInstaller is required only when building the Windows release package.

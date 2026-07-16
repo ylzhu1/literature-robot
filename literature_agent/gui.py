@@ -536,8 +536,12 @@ class SetupApp:
             },
             score=20,
         )
-        summary = summarize_items([item], config)[0].summary_text
-        return "LLM test succeeded:\n" + summary
+        result = summarize_items([item], config)[0]
+        if result.used_fallback:
+            raise RuntimeError(
+                "LLM test failed. Check the API key, base URL, model name, and network connection."
+            )
+        return "LLM test succeeded:\n" + result.summary_text
 
     def test_feishu(self) -> None:
         self._run_threaded("Testing Feishu...", self._test_feishu)

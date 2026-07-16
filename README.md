@@ -183,24 +183,23 @@ After the secrets are saved, open the repository's `Actions` tab, select `Daily 
 
 ## Build A Windows App
 
-For lab users who should not interact with PowerShell or Python directly, build a Windows application bundle:
+For lab users who should not interact with PowerShell or Python directly, download `LiteratureAgent-Windows.zip` from the repository's GitHub Releases page. The source-code ZIP from the green `Code` button does not contain the application.
+
+To create a new Windows release package from source, run:
 
 ```powershell
-.\scripts\build_windows_app.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_app.ps1
 ```
 
 The build output is:
 
 ```text
-dist/LiteratureAgent/
-  LiteratureAgentSetup.exe
-  config.json
-  .env.example
-  QUICK_START.md
-  ...
+dist/LiteratureAgent-Windows.zip
 ```
 
-Share the whole `dist/LiteratureAgent` folder as a zip package. Users can double-click `LiteratureAgentSetup.exe`, fill in the required credentials, run the tests, and install the daily scheduled task from the GUI.
+Upload that ZIP as a GitHub Release asset. It is built from a clean folder and contains the application, public configuration, and quick-start guide, but no `.env`, reports, or local database. Do not manually zip a folder after it has been configured or used.
+
+After extracting the release ZIP, users can double-click `LiteratureAgentSetup.exe`, fill in the required credentials, run the tests, and install the local daily scheduled task from the GUI. Windows may show an unknown-publisher warning because the executable is not code-signed; distribute it only through the repository's official GitHub Release page.
 
 ## Keyword Strategy
 

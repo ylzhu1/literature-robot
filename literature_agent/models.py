@@ -27,3 +27,4 @@ class ItemSummary:
     item: LiteratureItem
     summary_text: str
     relevance: str
+    used_fallback: bool = False

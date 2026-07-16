@@ -46,7 +46,12 @@ def _fallback_summary(item: LiteratureItem) -> ItemSummary:
             "模型服务本次未能完成论文解读。为避免把关键词匹配误写成研究结论，本条不生成推测性的解析。请在下一次运行后重试，或查看工作流日志中的 LLM 错误信息。",
         ]
     )
-    return ItemSummary(item=item, summary_text=text, relevance=_relevance_label(item.score))
+    return ItemSummary(
+        item=item,
+        summary_text=text,
+        relevance=_relevance_label(item.score),
+        used_fallback=True,
+    )
 
 
 def _completion_url(base_url: str) -> str:
@@ -247,7 +252,13 @@ def summarize_items(items: List[LiteratureItem], config: Dict[str, Any]) -> List
         if use_llm:
             try:
                 text = _call_openai_compatible(item, config)
-                summaries.append(ItemSummary(item=item, summary_text=text, relevance=_relevance_label(item.score)))
+                summaries.append(
+                    ItemSummary(
+                        item=item,
+                        summary_text=text,
+                        relevance=_relevance_label(item.score),
+                    )
+                )
                 continue
             except Exception as exc:
                 print(f"[warn] LLM summary failed for '{item.title[:60]}': {exc}; using metadata fallback.")
