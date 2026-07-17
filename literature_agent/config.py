@@ -24,7 +24,7 @@ def load_env_file(path: Path) -> None:
 def load_config(config_path: str) -> Dict[str, Any]:
     path = Path(config_path).resolve()
     load_env_file(path.parent / ".env")
-    with path.open("r", encoding="utf-8") as fh:
+    with path.open("r", encoding="utf-8-sig") as fh:
         config = json.load(fh)
     config["_config_dir"] = str(path.parent)
     return config
