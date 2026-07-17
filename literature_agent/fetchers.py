@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 import time
 import urllib.parse
 import urllib.error
@@ -12,6 +14,8 @@ from email.utils import parsedate_to_datetime
 from typing import Any, Dict, Iterable, List, Optional
 
 from .models import LiteratureItem
+
+ACCEPT_HEADER = "application/json, application/atom+xml, application/rss+xml, text/xml, */*"
 
 ATOM_NS = {"atom": "http://www.w3.org/2005/Atom"}
 ARXIV_NS = {
@@ -25,11 +29,53 @@ def _request_text(url: str, user_agent: str = "LiteratureAgent/0.1", timeout: in
         url,
         headers={
             "User-Agent": user_agent,
-            "Accept": "application/json, application/atom+xml, application/rss+xml, text/xml, */*",
+            "Accept": ACCEPT_HEADER,
         },
     )
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        return response.read().decode("utf-8", errors="replace")
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return response.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError:
+        raise
+    except Exception as exc:
+        return _request_text_with_curl(url, user_agent=user_agent, timeout=timeout, first_error=exc)
+
+
+def _request_text_with_curl(
+    url: str,
+    user_agent: str,
+    timeout: int,
+    first_error: Exception,
+) -> str:
+    curl = shutil.which("curl") or shutil.which("curl.exe")
+    if not curl:
+        raise first_error
+
+    completed = subprocess.run(
+        [
+            curl,
+            "--location",
+            "--silent",
+            "--show-error",
+            "--fail",
+            "--max-time",
+            str(timeout),
+            "--user-agent",
+            user_agent,
+            "--header",
+            f"Accept: {ACCEPT_HEADER}",
+            url,
+        ],
+        capture_output=True,
+        timeout=timeout + 10,
+    )
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout).decode("utf-8", errors="replace").strip()
+        raise RuntimeError(
+            f"urllib request failed ({first_error}); curl fallback failed: "
+            f"{detail or f'exit code {completed.returncode}'}"
+        ) from first_error
+    return completed.stdout.decode("utf-8", errors="replace")
 
 
 def _request_text_with_retries(
