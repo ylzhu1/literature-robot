@@ -43,7 +43,7 @@ Runtime files such as `.env`, `data/`, `reports/`, and `logs/` are excluded by `
 - Optional: SMTP account for email delivery
 - Optional: OpenAI-compatible LLM API
 
-The current MVP uses only the Python standard library.
+The scheduled workflow and command-line runner use the Python standard library. The setup GUI uses CustomTkinter, which is listed in `requirements.txt` and bundled into the Windows release package.
 
 ## Configuration
 

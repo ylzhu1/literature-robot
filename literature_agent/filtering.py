@@ -39,15 +39,13 @@ def score_item(item: LiteratureItem, config: Dict[str, Any]) -> LiteratureItem:
         if _contains(text, keyword):
             score -= 5
 
+    # Reward papers that span several topics, regardless of which topics they
+    # are. Each matched group beyond the first adds a flat bonus, so the scoring
+    # stays fair for any user-defined keyword groups (no hard-coded group names).
     group_count = len(matched_groups)
-    if {"method", "oxidation"}.issubset(matched_groups):
-        score += 5
-    if {"oxidation", "surface_defect"}.issubset(matched_groups):
-        score += 3
-    if {"method", "surface_defect", "metal_system"}.issubset(matched_groups):
-        score += 3
-    if group_count >= 3:
-        score += 2
+    cross_group_bonus = int(config.get("cross_group_bonus", 3))
+    if group_count > 1:
+        score += cross_group_bonus * (group_count - 1)
 
     item.score = score
     item.matched_groups = matched_groups

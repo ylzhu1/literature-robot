@@ -1,2 +1,6 @@
-# The desktop application and scheduled workflow use the Python standard library.
+# The scheduled workflow (literature_agent.main) uses only the Python standard library.
+# The setup desktop GUI uses CustomTkinter for its modern interface.
+customtkinter>=6.0.0
+
 # PyInstaller is required only when building the Windows release package.
+# pyinstaller

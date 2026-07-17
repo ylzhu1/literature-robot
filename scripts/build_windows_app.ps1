@@ -23,7 +23,8 @@ foreach ($dll in @(
   "libcrypto-3-x64.dll",
   "liblzma.dll",
   "libbz2.dll",
-  "libexpat.dll"
+  "libexpat.dll",
+  "ffi.dll"
 )) {
   $dllPath = Join-Path $CondaBin $dll
   if (Test-Path $dllPath) {
@@ -51,6 +52,13 @@ if ($LASTEXITCODE -ne 0) {
   & $PythonExe -m pip install pyinstaller
 }
 
+Write-Host "Checking CustomTkinter..."
+& $PythonExe -c "import customtkinter" *> $null
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "CustomTkinter is not installed. Installing it with pip..."
+  & $PythonExe -m pip install customtkinter
+}
+
 Write-Host "Building LiteratureAgentSetup.exe..."
 & $PythonExe -m PyInstaller `
   --noconfirm `
@@ -59,6 +67,9 @@ Write-Host "Building LiteratureAgentSetup.exe..."
   --name LiteratureAgentSetup `
   --distpath dist `
   --workpath build `
+  --collect-data customtkinter `
+  --hidden-import customtkinter `
+  --hidden-import darkdetect `
   @BinaryArgs `
   @DataArgs `
   literature_agent_app.py
