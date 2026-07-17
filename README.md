@@ -47,9 +47,40 @@ The scheduled workflow and command-line runner use the Python standard library. 
 
 ## Configuration
 
-### GUI setup
+### Windows app setup
 
-For Windows users, the easiest way to configure the project is the setup GUI:
+For normal Windows users, download `LiteratureAgent-Windows.zip` from the repository's GitHub Releases page. Do not use the green `Code` button ZIP for the app, because that only downloads source code.
+
+After downloading:
+
+1. Extract `LiteratureAgent-Windows.zip` to a normal local folder, for example `Documents\LiteratureAgent`.
+2. Double-click `LiteratureAgentSetup.exe`.
+3. Work through the left-side setup pages in order.
+4. Click `Save Configuration`.
+5. Use `Run a Test` to send one real test brief.
+6. Optional: use `Schedule` to install the daily Windows task.
+
+The app writes private credentials to `.env` and runtime outputs to `data/` and `reports/` in the extracted app folder. Keep those files private and do not re-zip a folder after it has been configured or used.
+
+The app has five setup pages:
+
+- `Model API`: enter an OpenAI-compatible API key, base URL, and model name, then test the LLM connection.
+- `Topics & Filter`: edit keyword groups, strong keywords, excluded keywords, report size, look-back window, and matching strictness.
+- `Notifications`: enable Feishu and/or email, then send channel-specific test messages.
+- `Run a Test`: fetch papers, filter them, summarize matches, and send one real brief to enabled channels.
+- `Schedule`: register or update the local Windows scheduled task.
+
+In `Topics & Filter`, each keyword group is user-editable. A paper scores higher when it matches more groups. The `must appear` checkbox means the paper must match at least one checked group before it can be included. Use excluded keywords to reduce unrelated matches.
+
+### Source setup
+
+For developers running from source, install dependencies first:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+Then open the setup app:
 
 ```powershell
 .\run_setup_gui.ps1
@@ -60,16 +91,6 @@ Users with Python available in `PATH` can also double-click:
 ```text
 start_setup_gui.bat
 ```
-
-The GUI can:
-
-- Save LLM, Feishu, and SMTP settings
-- Enable or disable Feishu and email delivery
-- Test LLM connectivity
-- Send a Feishu test message
-- Send an email test message
-- Run a real literature test
-- Install or update the Windows scheduled task
 
 Required fields are marked with a red `*`. Email delivery is optional; when it is disabled, email fields do not need to be filled. For common email providers, the GUI only requires the provider, email address, and SMTP authorization code. Advanced SMTP fields are available when custom server settings are needed.
 
@@ -116,7 +137,7 @@ Set `email.enabled` and `feishu.enabled` according to the deployment target. Bot
 
 ## Run Manually
 
-Open the setup GUI:
+Open the setup app:
 
 ```powershell
 .\run_setup_gui.ps1
