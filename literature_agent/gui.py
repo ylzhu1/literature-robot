@@ -16,6 +16,7 @@ from .config import load_config
 from .email_sender import send_email
 from .feishu_sender import send_feishu
 from .models import LiteratureItem
+from .process_utils import subprocess_no_window_kwargs
 from .summarizer import summarize_items
 
 
@@ -154,6 +155,8 @@ class SetupApp:
         self.nav_buttons: dict[str, ctk.CTkButton] = {}
         self.email_required_stars: list[ctk.CTkLabel] = []
         self.email_inputs: list[ctk.CTkBaseClass] = []
+        self.busy_widgets: list[ctk.CTkBaseClass] = []
+        self.is_busy = False
 
         self._build()
         self.select_page("llm")
@@ -378,8 +381,9 @@ class SetupApp:
         self._field(body, "Model", self.llm_model, 2, required=True, placeholder="gpt-4o-mini")
         self._hint(body,
                    "Base URL should end at /v1, not the full /chat/completions path.", 3)
-        self._primary_btn(body, "Test LLM Connection", self.test_llm, soft=True).grid(
-            row=4, column=0, sticky="w", pady=(8, 0))
+        self.llm_test_button = self._primary_btn(body, "Test LLM Connection", self.test_llm, soft=True)
+        self.llm_test_button.grid(row=4, column=0, sticky="w", pady=(8, 0))
+        self.busy_widgets.append(self.llm_test_button)
 
     def _num_field(self, parent, label: str, variable: StringVar, hint: str, row: int) -> None:
         wrap = ctk.CTkFrame(parent, fg_color="transparent")
@@ -514,8 +518,9 @@ class SetupApp:
         self._switch(fbody, "Enable Feishu delivery", self.feishu_enabled).grid(row=0, column=0, sticky="w", pady=(0, 14))
         self._field(fbody, "Webhook URL", self.feishu_webhook, 1, required=True,
                     placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/...")
-        self._primary_btn(fbody, "Send Test Message", self.test_feishu, soft=True).grid(
-            row=2, column=0, sticky="w", pady=(4, 0))
+        self.feishu_test_button = self._primary_btn(fbody, "Send Test Message", self.test_feishu, soft=True)
+        self.feishu_test_button.grid(row=2, column=0, sticky="w", pady=(4, 0))
+        self.busy_widgets.append(self.feishu_test_button)
 
         # Email card
         ecard = self._card(page, "Email (optional)", "Deliver the same report over SMTP. Leave disabled if you only use Feishu.")
@@ -576,6 +581,7 @@ class SetupApp:
         self.email_test_button = self._primary_btn(ebody, "Send Test Email", self.test_email, soft=True)
         self.email_test_button.grid(row=8, column=0, sticky="w", pady=(4, 0))
         self.email_inputs.append(self.email_test_button)
+        self.busy_widgets.append(self.email_test_button)
 
         self._apply_email_provider()
         self._toggle_advanced_smtp()
@@ -603,11 +609,27 @@ class SetupApp:
             ctk.CTkLabel(row, text=icon, font=ctk.CTkFont(size=16), width=26).pack(side="left")
             ctk.CTkLabel(row, text=text, font=self.f_body, text_color=PALETTE["text"], anchor="w").pack(side="left", padx=(6, 0))
 
-        self._primary_btn(body, "▶  Run Literature Test", self.run_literature_test).grid(
-            row=1, column=0, sticky="w")
+        self.run_test_button = self._primary_btn(body, "▶  Run Literature Test", self.run_literature_test)
+        self.run_test_button.grid(row=1, column=0, sticky="w")
+        self.busy_widgets.append(self.run_test_button)
+
+        progress_row = ctk.CTkFrame(body, fg_color="transparent")
+        progress_row.grid(row=2, column=0, sticky="ew", pady=(12, 0))
+        progress_row.grid_columnconfigure(0, weight=1)
+        self.run_progress = ctk.CTkProgressBar(
+            progress_row, mode="indeterminate", height=8, progress_color=PALETTE["primary"]
+        )
+        self.run_progress.grid(row=0, column=0, sticky="ew")
+        self.run_progress.grid_remove()
+        self.run_status = ctk.CTkLabel(
+            progress_row, text="", font=self.f_small, text_color=PALETTE["muted"],
+            wraplength=620, justify="left", anchor="w",
+        )
+        self.run_status.grid(row=1, column=0, sticky="w", pady=(8, 0))
+        self.run_status.grid_remove()
 
         note = ctk.CTkFrame(body, fg_color="transparent")
-        note.grid(row=2, column=0, sticky="ew", pady=(12, 0))
+        note.grid(row=3, column=0, sticky="ew", pady=(12, 0))
         ctk.CTkLabel(
             note, text=("This sends a real message and may take a few minutes. It ignores the "
                         "already-seen database so you always get results. Watch the Activity log below."),
@@ -624,8 +646,9 @@ class SetupApp:
         entry = self._field(body, "Daily time (HH:MM)", self.schedule_time, 0, required=True, placeholder="09:00")
         entry.configure(width=160)
         self._hint(body, "24-hour format, for example 09:00 or 18:30.", 1)
-        self._primary_btn(body, "Install / Update Windows Task", self.install_schedule, soft=True).grid(
-            row=2, column=0, sticky="w", pady=(8, 12))
+        self.schedule_button = self._primary_btn(body, "Install / Update Windows Task", self.install_schedule, soft=True)
+        self.schedule_button.grid(row=2, column=0, sticky="w", pady=(8, 12))
+        self.busy_widgets.append(self.schedule_button)
         note = ctk.CTkFrame(body, fg_color=PALETTE["card_alt"], corner_radius=12)
         note.grid(row=3, column=0, sticky="ew")
         ctk.CTkLabel(
@@ -637,7 +660,9 @@ class SetupApp:
     def _build_action_bar(self, parent: ctk.CTkFrame) -> None:
         bar = ctk.CTkFrame(parent, fg_color="transparent")
         bar.grid(row=2, column=0, sticky="ew", pady=(16, 0))
-        self._primary_btn(bar, "💾  Save Configuration", self.save_config).pack(side="left")
+        self.save_button = self._primary_btn(bar, "💾  Save Configuration", self.save_config)
+        self.save_button.pack(side="left")
+        self.busy_widgets.append(self.save_button)
         ctk.CTkLabel(
             bar, text="Saves credentials to .env and settings to config.json.",
             font=self.f_small, text_color=PALETTE["muted"],
@@ -884,6 +909,7 @@ class SetupApp:
             encoding="utf-8",
             errors="replace",
             timeout=300,
+            **subprocess_no_window_kwargs(),
         )
         output = (completed.stdout or "") + (completed.stderr or "")
         if completed.returncode != 0:
@@ -912,6 +938,10 @@ $ErrorActionPreference = 'Stop'
 $ProjectDir = '{PROJECT_DIR}'
 $Executable = '{execute}'
 $TaskName = '{TASK_NAME}'
+$ExistingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+if ($null -ne $ExistingTask) {{
+    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+}}
 $Action = New-ScheduledTaskAction -Execute $Executable -Argument '{argument}' -WorkingDirectory $ProjectDir
 $Trigger = New-ScheduledTaskTrigger -Daily -At {schedule_time}
 $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
@@ -925,6 +955,7 @@ Write-Output "Installed scheduled task $TaskName at {schedule_time}"
             encoding="utf-8",
             errors="replace",
             timeout=60,
+            **subprocess_no_window_kwargs(),
         )
         output = (completed.stdout or "") + (completed.stderr or "")
         if completed.returncode != 0:
@@ -939,17 +970,52 @@ Write-Output "Installed scheduled task $TaskName at {schedule_time}"
 
     # ------------------------------------------------------------------ helpers
     def _run_threaded(self, start_message: str, target) -> None:
+        if self.is_busy:
+            self.log("Another operation is already running. Please wait for it to finish.", "info")
+            return
+        self._set_busy(True, start_message)
         self.log(start_message, "info")
 
         def worker() -> None:
             try:
                 result = target()
             except Exception as exc:
-                self.root.after(0, lambda: self._show_error(str(exc)))
+                message = str(exc)
+                self.root.after(0, lambda msg=message: self._finish_error(msg))
             else:
-                self.root.after(0, lambda: self.log(result, "success"))
+                self.root.after(0, lambda text=result: self._finish_success(text))
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def _set_busy(self, busy: bool, message: str = "") -> None:
+        self.is_busy = busy
+        state = "disabled" if busy else "normal"
+        for widget in self.busy_widgets:
+            try:
+                widget.configure(state=state)
+            except Exception:
+                pass
+        if hasattr(self, "run_progress"):
+            if busy:
+                self.run_progress.grid()
+                self.run_progress.start()
+                self.run_status.configure(text=message)
+                self.run_status.grid()
+            else:
+                self.run_progress.stop()
+                self.run_progress.grid_remove()
+                self.run_status.configure(text="")
+                self.run_status.grid_remove()
+        if not busy:
+            self._toggle_email_fields()
+
+    def _finish_success(self, message: str) -> None:
+        self._set_busy(False)
+        self.log(message, "success")
+
+    def _finish_error(self, message: str) -> None:
+        self._set_busy(False)
+        self._show_error(message)
 
     def _show_error(self, message: str) -> None:
         self.log("ERROR: " + message, "error")

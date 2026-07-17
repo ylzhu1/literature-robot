@@ -14,6 +14,7 @@ from email.utils import parsedate_to_datetime
 from typing import Any, Dict, Iterable, List, Optional
 
 from .models import LiteratureItem
+from .process_utils import subprocess_no_window_kwargs
 
 ACCEPT_HEADER = "application/json, application/atom+xml, application/rss+xml, text/xml, */*"
 
@@ -68,6 +69,7 @@ def _request_text_with_curl(
         ],
         capture_output=True,
         timeout=timeout + 10,
+        **subprocess_no_window_kwargs(),
     )
     if completed.returncode != 0:
         detail = (completed.stderr or completed.stdout).decode("utf-8", errors="replace").strip()

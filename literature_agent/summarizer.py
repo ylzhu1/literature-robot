@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 import json
 import os
 import shutil
@@ -11,6 +10,7 @@ import urllib.request
 from typing import Any, Dict, List
 
 from .models import ItemSummary, LiteratureItem
+from .process_utils import subprocess_no_window_kwargs
 
 
 GROUP_LABELS = {
@@ -42,7 +42,7 @@ def _fallback_summary(item: LiteratureItem) -> ItemSummary:
             "### 中文摘要",
             "模型服务本次未能完成中文翻译，原始英文摘要保留在上方。",
             "",
-            "### 💡 深度解读",
+            "### 深度解读",
             "模型服务本次未能完成论文解读。为避免把关键词匹配误写成研究结论，本条不生成推测性的解析。请在下一次运行后重试，或查看工作流日志中的 LLM 错误信息。",
         ]
     )
@@ -72,17 +72,16 @@ def _build_prompt(item: LiteratureItem) -> str:
 4. 使用简体中文，保留 DFT、MLIP、GCMC、AIMD 等必要英文缩写。
 5. 总长度控制在 350 至 550 个汉字左右，信息密度高但不要堆砌术语。
 
-请严格按下面的 Markdown 格式输出，不要添加标题以外的开场白：
-
+请严格按照下面的 Markdown 格式输出，不要添加标题以外的开场白：
 ### 中文摘要
 
 将英文摘要完整、准确地翻译为自然的中文段落。不要压缩成关键词，不要加入摘要中没有的信息。
 
-### 💡 深度解读
+### 深度解读
 
 1. **研究问题**：说明作者希望解决或解释的科学问题。
 2. **方法与体系**：说明研究的材料/表面/结构对象，以及实验、计算或理论方法。
-3. **核心创新或机制**：说明论文提出的新方法、新认识或机制；摘要信息不足时明确说明。
+3. **核心创新或机制**：说明论文提出的新方法、新认识或机理；摘要信息不足时明确说明。
 4. **关键结论**：概括摘要中可确认的主要发现；没有明确结论时写“摘要未说明”。
 
 论文标题：{item.title}
@@ -136,8 +135,6 @@ def _call_openai_compatible(item: LiteratureItem, config: Dict[str, Any]) -> str
     ).encode("utf-8")
 
     url = _completion_url(base_url)
-    if os.name == "nt":
-        return _call_via_powershell(body, api_key, url)
 
     try:
         return _call_via_urllib(body, api_key, url)
@@ -172,7 +169,6 @@ def _call_via_urllib(body: bytes, api_key: str, url: str) -> str:
 
 
 def _call_via_curl(body: bytes, api_key: str, url: str) -> str:
-    """Use curl as a Linux fallback when an OpenAI-compatible endpoint rejects urllib TLS."""
     curl = shutil.which("curl") or shutil.which("curl.exe")
     if not curl:
         raise RuntimeError("curl is not available")
@@ -197,6 +193,7 @@ def _call_via_curl(body: bytes, api_key: str, url: str) -> str:
             encoding="utf-8",
             errors="replace",
             timeout=120,
+            **subprocess_no_window_kwargs(),
         )
         if completed.returncode != 0:
             detail = ((completed.stdout or "") + (completed.stderr or "")).strip()
@@ -205,44 +202,6 @@ def _call_via_curl(body: bytes, api_key: str, url: str) -> str:
             return _extract_content(json.loads(completed.stdout))
         except json.JSONDecodeError as exc:
             raise RuntimeError(f"curl returned non-JSON output: {completed.stdout[:500]}") from exc
-
-
-def _call_via_powershell(body: bytes, api_key: str, url: str) -> str:
-    """Keep the Windows transport fallback used by the local desktop workflow."""
-    powershell = shutil.which("powershell.exe") or shutil.which("powershell")
-    if not powershell:
-        raise RuntimeError("PowerShell is not available for the Windows LLM request")
-
-    with tempfile.NamedTemporaryFile("wb", delete=False, suffix=".json") as temporary:
-        temporary.write(body)
-        payload_path = temporary.name
-
-    try:
-        script = f"""
-$ErrorActionPreference = 'Stop'
-$headers = @{{ Authorization = 'Bearer {api_key}'; 'Content-Type' = 'application/json' }}
-$body = Get-Content -Raw -Path '{payload_path}'
-$response = Invoke-RestMethod -Method Post -Uri '{url}' -Headers $headers -Body $body
-$response | ConvertTo-Json -Depth 20 -Compress
-"""
-        encoded_command = base64.b64encode(script.encode("utf-16le")).decode("ascii")
-        completed = subprocess.run(
-            [powershell, "-NoProfile", "-EncodedCommand", encoded_command],
-            capture_output=True,
-            text=False,
-            timeout=120,
-        )
-        if completed.returncode != 0:
-            stderr = (completed.stderr or b"").decode("utf-8", errors="replace").strip()
-            stdout = (completed.stdout or b"").decode("utf-8", errors="replace").strip()
-            raise RuntimeError(stderr or stdout or f"PowerShell request failed with code {completed.returncode}")
-        payload = json.loads((completed.stdout or b"").decode("utf-8", errors="replace"))
-        return _extract_content(payload)
-    finally:
-        try:
-            os.remove(payload_path)
-        except OSError:
-            pass
 
 
 def summarize_items(items: List[LiteratureItem], config: Dict[str, Any]) -> List[ItemSummary]:

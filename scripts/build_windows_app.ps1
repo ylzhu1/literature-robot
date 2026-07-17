@@ -1,15 +1,22 @@
+param(
+  [string]$PythonExe = $env:LITERATURE_AGENT_PYTHON
+)
+
 $ErrorActionPreference = "Stop"
 
 $ProjectDir = Split-Path -Parent $PSScriptRoot
-$PythonExe = "D:\work_program\anaconda3\envs\pynep\python.exe"
-
-if (-not (Test-Path $PythonExe)) {
+if ([string]::IsNullOrWhiteSpace($PythonExe)) {
   $PythonExe = "python"
 }
 
 Set-Location $ProjectDir
 
-$PythonPrefix = (& $PythonExe -c "import sys; print(sys.prefix)").Trim()
+try {
+  $PythonPrefix = (& $PythonExe -c "import sys; print(sys.prefix)").Trim()
+} catch {
+  throw "Python is required to build the Windows app. Pass -PythonExe or set LITERATURE_AGENT_PYTHON."
+}
+
 $CondaBin = Join-Path $PythonPrefix "Library\bin"
 $TclLib = Join-Path $PythonPrefix "Library\lib\tcl8.6"
 $TkLib = Join-Path $PythonPrefix "Library\lib\tk8.6"

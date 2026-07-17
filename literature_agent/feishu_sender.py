@@ -10,6 +10,8 @@ import urllib.error
 import urllib.request
 from typing import Any, Dict
 
+from .process_utils import subprocess_no_window_kwargs
+
 
 def _split_by_utf8_bytes(text: str, max_bytes: int = 26000) -> list[str]:
     chunks: list[str] = []
@@ -109,6 +111,7 @@ def _post_text_with_curl(webhook: str, payload: bytes) -> None:
             encoding="utf-8",
             errors="replace",
             timeout=45,
+            **subprocess_no_window_kwargs(),
         )
         if completed.returncode != 0:
             output = ((completed.stdout or "") + (completed.stderr or "")).strip()

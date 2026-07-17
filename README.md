@@ -175,15 +175,16 @@ python -m literature_agent.main --config config.json --ignore-seen --send-feishu
 
 ## Schedule On Windows
 
-Edit `scripts/install_windows_task.ps1` if a different Python path, project path, or schedule is needed. Then run PowerShell as administrator:
+The GUI `Schedule` page is the recommended way to install or update the daily task. It keeps only one Windows task and replaces the old time when you click `Install / Update Windows Task` again.
+
+For source-code use, you can also run the helper script from the repository root in PowerShell:
 
 ```powershell
-cd D:\agent_Crawling_Literature
 Set-ExecutionPolicy -Scope Process Bypass
 .\scripts\install_windows_task.ps1
 ```
 
-By default, the task runs daily at 09:00 and sends the report to Feishu.
+By default, the helper script runs daily at 09:00 and sends the report to the enabled channels.
 
 ## Schedule With GitHub Actions
 
