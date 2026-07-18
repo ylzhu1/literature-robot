@@ -23,6 +23,15 @@ class SeenStore:
             )
             """
         )
+        self.connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS app_state (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
         self.connection.commit()
 
     def seen_uids(self) -> Set[str]:
@@ -41,6 +50,24 @@ class SeenStore:
             VALUES (?, ?, ?, ?)
             """,
             rows,
+        )
+        self.connection.commit()
+
+    def get_state(self, key: str) -> str | None:
+        cursor = self.connection.execute("SELECT value FROM app_state WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        return row[0] if row else None
+
+    def set_state(self, key: str, value: str) -> None:
+        self.connection.execute(
+            """
+            INSERT INTO app_state (key, value, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value,
+                updated_at = excluded.updated_at
+            """,
+            (key, value),
         )
         self.connection.commit()
 

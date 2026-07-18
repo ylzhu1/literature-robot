@@ -9,6 +9,7 @@ The default example configuration focuses on surface oxidation, density function
 - Fetch recent papers from arXiv and Crossref
 - Filter papers with positive and negative keyword groups
 - Deduplicate pushed papers with a local SQLite database
+- When the current window has nothing new, automatically backfill the previous time window and record the search range in the report
 - Generate Chinese summaries with an OpenAI-compatible chat-completion API
 - Send reports to Feishu custom bots
 - Optionally send reports by email through SMTP

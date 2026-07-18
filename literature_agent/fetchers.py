@@ -148,7 +148,22 @@ def _date_parts_to_datetime(date_parts: Any) -> Optional[datetime]:
         return None
 
 
-def fetch_arxiv(config: Dict[str, Any], since: datetime) -> List[LiteratureItem]:
+def _normalize_utc(value: datetime) -> datetime:
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+def _in_window(published: Optional[datetime], since: datetime, until: Optional[datetime]) -> bool:
+    if published is None:
+        return True
+    published_utc = _normalize_utc(published)
+    if published_utc < since:
+        return False
+    if until is not None and published_utc >= until:
+        return False
+    return True
+
+
+def fetch_arxiv(config: Dict[str, Any], since: datetime, until: Optional[datetime] = None) -> List[LiteratureItem]:
     source_config = config["sources"].get("arxiv", {})
     if not source_config.get("enabled", False):
         return []
@@ -189,7 +204,7 @@ def fetch_arxiv(config: Dict[str, Any], since: datetime) -> List[LiteratureItem]
             abstract = _clean_text(entry.findtext("atom:summary", default="", namespaces=ATOM_NS))
             published = _parse_dt(entry.findtext("atom:published", default="", namespaces=ATOM_NS))
             doi = _clean_text(entry.findtext("arxiv:doi", default="", namespaces=ARXIV_NS))
-            if published and published.replace(tzinfo=timezone.utc) < since:
+            if not _in_window(published, since, until):
                 continue
             authors = [
                 _clean_text(author.findtext("atom:name", default="", namespaces=ATOM_NS))
@@ -202,7 +217,7 @@ def fetch_arxiv(config: Dict[str, Any], since: datetime) -> List[LiteratureItem]
                     abstract=abstract,
                     url=uid,
                     source="arXiv",
-                    published=published,
+                    published=_normalize_utc(published) if published else None,
                     authors=[author for author in authors if author],
                     venue="arXiv",
                     doi=doi,
@@ -213,7 +228,7 @@ def fetch_arxiv(config: Dict[str, Any], since: datetime) -> List[LiteratureItem]
     return items
 
 
-def fetch_openalex(config: Dict[str, Any], since: datetime) -> List[LiteratureItem]:
+def fetch_openalex(config: Dict[str, Any], since: datetime, until: Optional[datetime] = None) -> List[LiteratureItem]:
     source_config = config["sources"].get("openalex", {})
     if not source_config.get("enabled", False):
         return []
@@ -223,6 +238,7 @@ def fetch_openalex(config: Dict[str, Any], since: datetime) -> List[LiteratureIt
     mailto = source_config.get("mailto", "")
     items: List[LiteratureItem] = []
     from_date = since.date().isoformat()
+    until_date = until.date().isoformat() if until else None
 
     for term in query_terms:
         params = {
@@ -231,6 +247,8 @@ def fetch_openalex(config: Dict[str, Any], since: datetime) -> List[LiteratureIt
             "sort": "publication_date:desc",
             "per-page": max_results,
         }
+        if until_date:
+            params["filter"] += f",to_publication_date:{until_date}"
         if mailto and "@" in mailto:
             params["mailto"] = mailto
         url = "https://api.openalex.org/works?" + urllib.parse.urlencode(params)
@@ -246,7 +264,7 @@ def fetch_openalex(config: Dict[str, Any], since: datetime) -> List[LiteratureIt
             title = _clean_text(work.get("title") or work.get("display_name") or "")
             abstract = _clean_text(_abstract_from_inverted_index(work.get("abstract_inverted_index")))
             published = _parse_dt(work.get("publication_date", ""))
-            if published and published.replace(tzinfo=timezone.utc) < since:
+            if not _in_window(published, since, until):
                 continue
             ids = work.get("ids") or {}
             doi = (ids.get("doi") or "").replace("https://doi.org/", "")
@@ -269,7 +287,7 @@ def fetch_openalex(config: Dict[str, Any], since: datetime) -> List[LiteratureIt
                     abstract=abstract,
                     url=url_value,
                     source="OpenAlex",
-                    published=published,
+                    published=_normalize_utc(published) if published else None,
                     authors=authors,
                     venue=venue,
                     doi=doi,
@@ -280,7 +298,7 @@ def fetch_openalex(config: Dict[str, Any], since: datetime) -> List[LiteratureIt
     return items
 
 
-def fetch_crossref(config: Dict[str, Any], since: datetime) -> List[LiteratureItem]:
+def fetch_crossref(config: Dict[str, Any], since: datetime, until: Optional[datetime] = None) -> List[LiteratureItem]:
     source_config = config["sources"].get("crossref", {})
     if not source_config.get("enabled", False):
         return []
@@ -290,7 +308,7 @@ def fetch_crossref(config: Dict[str, Any], since: datetime) -> List[LiteratureIt
     mailto = source_config.get("mailto", "")
     items: List[LiteratureItem] = []
     start_date = since.date().isoformat()
-    end_date = datetime.now(timezone.utc).date().isoformat()
+    end_date = (until or datetime.now(timezone.utc)).date().isoformat()
 
     for term in query_terms:
         params = {
@@ -317,7 +335,7 @@ def fetch_crossref(config: Dict[str, Any], since: datetime) -> List[LiteratureIt
             issued = _date_parts_to_datetime((work.get("issued") or {}).get("date-parts"))
             published_online = _date_parts_to_datetime((work.get("published-online") or {}).get("date-parts"))
             published = published_online or issued
-            if published and published.replace(tzinfo=timezone.utc) < since:
+            if not _in_window(published, since, until):
                 continue
             doi = _clean_text(work.get("DOI", ""))
             authors = []
@@ -337,7 +355,7 @@ def fetch_crossref(config: Dict[str, Any], since: datetime) -> List[LiteratureIt
                     abstract=abstract,
                     url=url_value,
                     source="Crossref",
-                    published=published,
+                    published=_normalize_utc(published) if published else None,
                     authors=authors,
                     venue=venue,
                     doi=doi,
@@ -349,7 +367,7 @@ def fetch_crossref(config: Dict[str, Any], since: datetime) -> List[LiteratureIt
     return items
 
 
-def fetch_rss(config: Dict[str, Any], since: datetime) -> List[LiteratureItem]:
+def fetch_rss(config: Dict[str, Any], since: datetime, until: Optional[datetime] = None) -> List[LiteratureItem]:
     source_config = config["sources"].get("rss", {})
     if not source_config.get("enabled", False):
         return []
@@ -387,7 +405,7 @@ def fetch_rss(config: Dict[str, Any], since: datetime) -> List[LiteratureItem]:
                 or node.findtext("published", default="")
                 or node.findtext("atom:published", default="", namespaces=ATOM_NS)
             )
-            if published and published.replace(tzinfo=timezone.utc) < since:
+            if not _in_window(published, since, until):
                 continue
             items.append(
                 LiteratureItem(
@@ -396,19 +414,24 @@ def fetch_rss(config: Dict[str, Any], since: datetime) -> List[LiteratureItem]:
                     abstract=abstract,
                     url=link,
                     source=name,
-                    published=published,
+                    published=_normalize_utc(published) if published else None,
                     venue=name,
                 )
             )
     return items
 
 
-def fetch_all(config: Dict[str, Any]) -> List[LiteratureItem]:
+def fetch_all(
+    config: Dict[str, Any],
+    since: Optional[datetime] = None,
+    until: Optional[datetime] = None,
+) -> List[LiteratureItem]:
     lookback_days = int(config.get("lookback_days", 7))
-    since = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+    end = until or datetime.now(timezone.utc)
+    start = since or (end - timedelta(days=lookback_days))
     items: List[LiteratureItem] = []
     for fetcher in (fetch_arxiv, fetch_crossref, fetch_openalex, fetch_rss):
-        items.extend(fetcher(config, since))
+        items.extend(fetcher(config, start, end))
     return items
 
 
