@@ -239,6 +239,41 @@ Positive keyword groups include:
 
 Negative keywords reduce false positives from unrelated domains such as biological oxidation, wastewater treatment, machining, surface roughness prediction, antibacterial coatings, and bioinformatics.
 
+### Scoring Rules
+
+Each fetched paper is scored against its title, abstract, and venue name. The scoring is intentionally generic, so users can rename or replace the keyword groups for other research areas.
+
+- Each matched keyword group adds `2 + min(number_of_hits_in_that_group, 4)` points.
+- Each matched strong keyword adds `4` points.
+- Each matched excluded keyword subtracts `5` points.
+- Papers that match multiple groups receive a cross-group bonus: `cross_group_bonus * (matched_group_count - 1)`. If `cross_group_bonus` is not set, the default is `3`.
+
+A paper is kept only when all of these conditions are satisfied:
+
+- Its score is at least `min_score`.
+- It matches at least `group_min_matches` keyword groups.
+- If any group is marked as required, it must match at least one required group.
+
+The default configuration uses:
+
+```json
+{
+  "min_score": 12,
+  "group_min_matches": 3,
+  "require_any_groups": ["oxidation"]
+}
+```
+
+This means a default report favors papers that connect oxidation with methods, material systems, surfaces, defects, or in situ characterization, rather than papers that only contain one isolated keyword.
+
+### Writing Keywords
+
+Use keyword groups as separate concepts, not as one long list. For example, a surface oxidation project might use separate groups for `method`, `oxidation`, `surface_defect`, and `metal_system`. A strong paper should hit several of these groups at once.
+
+Good keyword groups are broad enough to retrieve variants but specific enough to describe one concept. Put especially important phrases in strong keywords, and put recurring false-positive domains in excluded keywords.
+
+For short abbreviations such as `DFT`, `Cu`, or `Pt`, the matcher uses whole-word matching. Longer phrases such as `oxygen adsorption` or `machine learning potential` are matched as phrases inside the title, abstract, or venue.
+
 ## Security
 
 Store API keys, webhooks, and SMTP credentials in `.env` for local use or in repository secrets for automated deployments. Runtime outputs are ignored by default.
