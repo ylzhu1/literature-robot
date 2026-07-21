@@ -472,7 +472,29 @@
           </div>
           <div>
             <h3>邮箱</h3>
-            <p>邮箱是可选项。如果只用飞书，可以关闭邮箱。若打开邮箱，需要填写邮箱地址和 SMTP 授权码。</p>
+            <p>邮箱是可选项。如果只用飞书，可以关闭邮箱。若打开邮箱，建议把下面这些字段都填完整。</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>字段</th>
+                  <th>怎么填</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>Email Address</code></td>
+                  <td>发件邮箱，例如你的 QQ 邮箱。</td>
+                </tr>
+                <tr>
+                  <td><code>SMTP Authorization Code</code></td>
+                  <td>邮箱后台生成的 SMTP 授权码，不是登录密码。</td>
+                </tr>
+                <tr>
+                  <td><code>Recipient</code></td>
+                  <td>收件邮箱。最稳妥的做法是填同一个邮箱地址，例如 <code>2921035328@qq.com</code>。不要留空，避免某些 SMTP 服务报“所属域名不存在”等错误。</td>
+                </tr>
+              </tbody>
+            </table>
             <p class="small">很多邮箱的 SMTP 授权码不是登录密码，请到邮箱设置里单独生成。</p>
           </div>
         </div>
