@@ -156,7 +156,6 @@ def build_source_query_terms(
 ) -> list[str]:
     """Build broad retrieval queries from the same topic settings used for scoring."""
     terms: list[str] = []
-    terms.extend(strong_keywords)
 
     priority_names = [name for name in require_any if name in groups] or list(groups)[:2]
     priority_groups = [groups[name] for name in priority_names if groups.get(name)]
@@ -174,6 +173,8 @@ def build_source_query_terms(
         for a in base_group[:4]:
             for b in keywords[:3]:
                 terms.append(f"{a} {b}")
+
+    terms.extend(strong_keywords)
 
     for keywords in groups.values():
         terms.extend(keywords[:2])
@@ -495,7 +496,7 @@ class SetupApp:
             text_color=PALETTE["primary_text"],
         ).pack(side="left")
         ctk.CTkLabel(
-            addbar, text="Tick 'must appear' on the groups a paper is required to match (any one of them).",
+            addbar, text="Tick 'must appear' on every group a paper is required to match.",
             font=self.f_small, text_color=PALETTE["muted"],
         ).pack(side="left", padx=(12, 0))
 

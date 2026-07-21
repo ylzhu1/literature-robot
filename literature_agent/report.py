@@ -36,6 +36,7 @@ def build_report(
     mode_text = {
         "current": "\u5f53\u524d\u7a97\u53e3",
         "backfill": "\u56de\u6eaf\u7a97\u53e3",
+        "current+backfill": "\u5f53\u524d+\u56de\u6eaf\u7a97\u53e3",
         "sample": "\u6837\u4f8b\u6a21\u5f0f",
     }.get(window_mode, window_mode)
     if not summaries:

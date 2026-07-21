@@ -192,7 +192,7 @@ def fetch_arxiv(config: Dict[str, Any], since: datetime, until: Optional[datetim
         )
         url = f"https://export.arxiv.org/api/query?{params}"
         try:
-            xml_text = _request_text(url, user_agent="LiteratureAgent/0.1 (arxiv fetcher)")
+            xml_text = _request_text_with_retries(url, user_agent="LiteratureAgent/0.1 (arxiv fetcher)")
         except Exception as exc:
             print(f"[warn] arXiv fetch failed for query '{term}': {exc}")
             continue
@@ -223,7 +223,7 @@ def fetch_arxiv(config: Dict[str, Any], since: datetime, until: Optional[datetim
                     doi=doi,
                 )
             )
-        time.sleep(1.0)
+        time.sleep(3.2)
 
     return items
 

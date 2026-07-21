@@ -9,7 +9,7 @@ The default example configuration focuses on surface oxidation, density function
 - Fetch recent papers from arXiv and Crossref
 - Filter papers with positive and negative keyword groups
 - Deduplicate pushed papers with a local SQLite database
-- When the current window has nothing new, automatically backfill the previous time window and record the search range in the report
+- When the current window has too few matches, automatically backfill previous time windows and record the combined search range in the report
 - Generate Chinese summaries with an OpenAI-compatible chat-completion API
 - Send reports to Feishu custom bots
 - Optionally send reports by email through SMTP
@@ -72,7 +72,7 @@ The app has five setup pages:
 - `Run a Test`: fetch papers, filter them, summarize matches, and send one real brief to enabled channels.
 - `Schedule`: register or update the local Windows scheduled task.
 
-In `Topics & Filter`, each keyword group is user-editable. A paper scores higher when it matches more groups. The `must appear` checkbox means the paper must match at least one checked group before it can be included. Use excluded keywords to reduce unrelated matches.
+In `Topics & Filter`, each keyword group is user-editable. A paper scores higher when it matches more groups. The `must appear` checkbox marks a required concept: if several groups are checked, a paper must match every checked group before it can be included. Use excluded keywords to reduce unrelated matches.
 
 When topics are saved in the GUI, the app also regenerates arXiv, Crossref, and OpenAlex search queries from the same keyword groups and strong keywords. RSS feeds are not regenerated because they are fixed journal feeds rather than keyword searches.
 
@@ -255,7 +255,7 @@ A paper is kept only when all of these conditions are satisfied:
 
 - Its score is at least `min_score`.
 - It matches at least `group_min_matches` keyword groups.
-- If any group is marked as required, it must match at least one required group.
+- If any group is marked as required, it must match every required group.
 
 The default configuration uses:
 
@@ -267,11 +267,20 @@ The default configuration uses:
 }
 ```
 
-This means a default report favors papers that connect oxidation with methods, material systems, surfaces, defects, or in situ characterization, rather than papers that only contain one isolated keyword.
+This means a default report must mention oxidation and also favors papers that connect it with methods, material systems, surfaces, defects, or in situ characterization, rather than papers that only contain one isolated keyword.
 
 ### Writing Keywords
 
 Use keyword groups as separate concepts, not as one long list. For example, a surface oxidation project might use separate groups for `method`, `oxidation`, `surface_defect`, and `metal_system`. A strong paper should hit several of these groups at once.
+
+For battery carbon-anode topics, keep the required groups broad enough to avoid empty reports. A practical setup is:
+
+- `carbon_material` as required: `hard carbon`, `soft carbon`, `disordered carbon`, `non-graphitizable carbon`
+- `battery_context` as required: `sodium-ion battery`, `lithium-ion battery`, `carbon anode`, `negative electrode`, `sodium storage`
+- `mechanical_property` as a normal scoring group: `mechanical properties`, `Young's modulus`, `nanoindentation`, `fracture`, `stress`, `strain`, `cracking`
+- Excluded keywords for common false positives: `diamond-like carbon`, `DLC`, `steel`, `tribology`, `friction`, `wear`, `coating`, `lubrication`
+
+If you require `carbon_material`, `battery_context`, and `mechanical_property` at the same time, the report becomes much stricter and may return fewer papers. Use that only when mechanical behavior is mandatory.
 
 Good keyword groups are broad enough to retrieve variants but specific enough to describe one concept. Put especially important phrases in strong keywords, and put recurring false-positive domains in excluded keywords.
 

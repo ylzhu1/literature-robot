@@ -32,7 +32,7 @@ def send_email(report: str, config: Dict[str, Any]) -> None:
     message["From"] = sender
     message["To"] = ", ".join(recipients)
     message["Subject"] = f"{subject_prefix} Daily Brief"
-    message.set_content(report)
+    message.set_content(report, subtype="plain", charset="utf-8")
 
     if use_ssl:
         with smtplib.SMTP_SSL(host, port, timeout=30) as smtp:

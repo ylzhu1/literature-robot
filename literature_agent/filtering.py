@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List
 
 from .models import LiteratureItem
 
@@ -56,7 +56,7 @@ def score_item(item: LiteratureItem, config: Dict[str, Any]) -> LiteratureItem:
 def filter_relevant(items: Iterable[LiteratureItem], config: Dict[str, Any]) -> List[LiteratureItem]:
     min_score = int(config.get("min_score", 7))
     group_min_matches = int(config.get("group_min_matches", 2))
-    require_any_groups = set(config.get("require_any_groups", []))
+    required_groups = set(config.get("require_any_groups", []))
     seen = set()
     relevant: List[LiteratureItem] = []
 
@@ -68,7 +68,7 @@ def filter_relevant(items: Iterable[LiteratureItem], config: Dict[str, Any]) -> 
             continue
         seen.add(uid)
         scored = score_item(item, config)
-        if require_any_groups and not any(group in scored.matched_groups for group in require_any_groups):
+        if required_groups and not required_groups.issubset(scored.matched_groups):
             continue
         if scored.score >= min_score and len(scored.matched_groups) >= group_min_matches:
             relevant.append(scored)

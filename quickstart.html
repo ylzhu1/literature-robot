@@ -433,7 +433,7 @@
           </div>
           <div class="notice">
             <strong>required group 要谨慎</strong>
-            如果某个概念是好论文必须具备的，就把这一组勾成 required。比如氧化方向可以要求必须命中 <code>oxidation</code> 组。
+            如果某个概念是好论文必须具备的，就把这一组勾成 required。勾了多个 required 组时，论文必须同时命中这些组。
           </div>
           <div class="notice">
             <strong>strong keywords 放核心偏好</strong>
@@ -452,8 +452,40 @@
   "require_any_groups": ["oxidation"]
 }</pre>
         <p>
-          这表示：论文总分至少 12 分，至少命中 3 个关键词组，并且必须命中 required 组里的至少一个。
+          这表示：论文总分至少 12 分，至少命中 3 个关键词组，并且必须命中所有 required 组。
           如果报告经常为空，可以降低 <code>min_score</code> 或 <code>group_min_matches</code>；如果无关论文太多，就提高它们，或增加 excluded keywords。
+        </p>
+        <h3>示例：硬碳 / 软碳电池负极</h3>
+        <p>
+          如果研究硬碳、软碳作为电池负极材料，不建议只写 <code>hard carbon mechanical properties</code> 这一类长句。
+          更稳的做法是把主题拆成几个概念组：
+        </p>
+        <table>
+          <tr>
+            <th>关键词组</th>
+            <th>建议内容</th>
+            <th>是否 required</th>
+          </tr>
+          <tr>
+            <td><code>carbon_material</code></td>
+            <td><code>hard carbon</code>, <code>soft carbon</code>, <code>disordered carbon</code>, <code>non-graphitizable carbon</code></td>
+            <td>是</td>
+          </tr>
+          <tr>
+            <td><code>battery_context</code></td>
+            <td><code>sodium-ion battery</code>, <code>lithium-ion battery</code>, <code>carbon anode</code>, <code>negative electrode</code>, <code>sodium storage</code></td>
+            <td>是</td>
+          </tr>
+          <tr>
+            <td><code>mechanical_property</code></td>
+            <td><code>mechanical properties</code>, <code>Young's modulus</code>, <code>nanoindentation</code>, <code>fracture</code>, <code>stress</code>, <code>strain</code>, <code>cracking</code></td>
+            <td>通常先不勾</td>
+          </tr>
+        </table>
+        <p>
+          这样可以先保证论文确实是“碳负极”方向，再让机械性能词汇提高排序。
+          如果你只想要严格机械性能论文，再把 <code>mechanical_property</code> 也勾成 required。
+          常见误报可以放进 excluded keywords，例如 <code>diamond-like carbon</code>, <code>DLC</code>, <code>steel</code>, <code>tribology</code>, <code>friction</code>, <code>wear</code>, <code>coating</code>。
         </p>
         <div class="notice info">
           <strong>保存后搜索词也会更新</strong>
@@ -491,7 +523,7 @@
                 </tr>
                 <tr>
                   <td><code>Recipient</code></td>
-                  <td>收件邮箱。最稳妥的做法是填同一个邮箱地址，例如 <code>2921035328@qq.com</code>。不要留空，避免某些 SMTP 服务报“所属域名不存在”等错误。</td>
+                  <td>收件邮箱。最稳妥的做法是填和 <code>Email Address</code> 相同的邮箱地址，例如 <code>your_email@example.com</code>。不要留空，避免某些 SMTP 服务报“所属域名不存在”等错误。</td>
                 </tr>
               </tbody>
             </table>
