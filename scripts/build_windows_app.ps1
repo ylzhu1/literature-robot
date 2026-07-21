@@ -95,6 +95,7 @@ Copy-Item -Recurse -Force (Join-Path $ProjectDir "dist\LiteratureAgentSetup\*") 
 Copy-Item -Force (Join-Path $ProjectDir "config.json") $ReleaseDir
 Copy-Item -Force (Join-Path $ProjectDir ".env.example") $ReleaseDir
 Copy-Item -Force (Join-Path $ProjectDir "README.md") $ReleaseDir
+Copy-Item -Force (Join-Path $ProjectDir "quickstart.html") $ReleaseDir
 Copy-Item -Force (Join-Path $ProjectDir "requirements.txt") $ReleaseDir
 
 $ReleaseScriptsDir = Join-Path $ReleaseDir "scripts"
@@ -105,11 +106,12 @@ Copy-Item -Force (Join-Path $ProjectDir "scripts\install_windows_task.ps1") $Rel
 # Literature Agent Quick Start
 
 1. Extract this ZIP to a normal local folder such as `Documents\LiteratureAgent`.
-2. Double-click `LiteratureAgentSetup.exe`. Python and PowerShell are not required for normal use.
-3. Use the left-side pages in order: `Model API`, `Topics & Filter`, `Notifications`, `Run a Test`, and `Schedule`.
-4. Enter the LLM API values, adjust topics if needed, and enable Feishu and/or email.
-5. Click `Save Configuration`, then use `Run a Test` to send one real test brief.
-6. To use this computer for local scheduling, set a daily time and click `Install / Update Windows Task`.
+2. Open `quickstart.html` first for the step-by-step user guide.
+3. Double-click `LiteratureAgentSetup.exe`. Python and PowerShell are not required for normal use.
+4. Use the left-side pages in order: `Model API`, `Topics & Filter`, `Notifications`, `Run a Test`, and `Schedule`.
+5. Enter the LLM API values, adjust topics if needed, and enable Feishu and/or email.
+6. Click `Save Configuration`, then use `Run a Test` to send one real test brief.
+7. To use this computer for local scheduling, set a daily time and click `Install / Update Windows Task`.
 
 The app creates `.env`, `data`, and `reports` only after it is configured or run. These files are private runtime data and must not be shared.
 '@ | Set-Content -Encoding UTF8 (Join-Path $ReleaseDir "QUICK_START.md")

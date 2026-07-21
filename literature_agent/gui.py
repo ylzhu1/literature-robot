@@ -7,6 +7,7 @@ import subprocess
 import sys
 import threading
 from datetime import datetime, timezone
+from itertools import combinations
 from pathlib import Path
 from tkinter import BooleanVar, StringVar, messagebox
 
@@ -124,6 +125,60 @@ def detect_email_provider(host: str) -> str:
         if settings["host"] and settings["host"] == host:
             return name
     return "Custom"
+
+
+def _clean_query_term(value: str) -> str:
+    return re.sub(r"\s+", " ", value.strip())
+
+
+def _dedupe_query_terms(terms: list[str], limit: int) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for term in terms:
+        cleaned = _clean_query_term(term)
+        if not cleaned:
+            continue
+        key = cleaned.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(cleaned)
+        if len(result) >= limit:
+            break
+    return result
+
+
+def build_source_query_terms(
+    groups: dict[str, list[str]],
+    require_any: list[str],
+    strong_keywords: list[str],
+    limit: int = 12,
+) -> list[str]:
+    """Build broad retrieval queries from the same topic settings used for scoring."""
+    terms: list[str] = []
+    terms.extend(strong_keywords)
+
+    priority_names = [name for name in require_any if name in groups] or list(groups)[:2]
+    priority_groups = [groups[name] for name in priority_names if groups.get(name)]
+
+    if len(priority_groups) >= 2:
+        for left, right in combinations(priority_groups[:3], 2):
+            for a in left[:5]:
+                for b in right[:5]:
+                    terms.append(f"{a} {b}")
+
+    base_group = priority_groups[0] if priority_groups else (next(iter(groups.values()), []))
+    for group_name, keywords in groups.items():
+        if keywords is base_group:
+            continue
+        for a in base_group[:4]:
+            for b in keywords[:3]:
+                terms.append(f"{a} {b}")
+
+    for keywords in groups.values():
+        terms.extend(keywords[:2])
+
+    return _dedupe_query_terms(terms, limit)
 
 
 class SetupApp:
@@ -798,10 +853,17 @@ class SetupApp:
                 require_any.append(key)
         config["keyword_groups"] = groups
         config["require_any_groups"] = require_any
+        strong_keywords: list[str] = []
         if self.strong_kw_box is not None:
-            config["strong_keywords"] = self._lines(self.strong_kw_box)
+            strong_keywords = self._lines(self.strong_kw_box)
+            config["strong_keywords"] = strong_keywords
         if self.negative_kw_box is not None:
             config["negative_keywords"] = self._lines(self.negative_kw_box)
+        source_terms = build_source_query_terms(groups, require_any, strong_keywords)
+        for source_name in ("arxiv", "crossref", "openalex"):
+            source_config = config.get("sources", {}).get(source_name)
+            if isinstance(source_config, dict):
+                source_config["query_terms"] = source_terms
 
     def save_config(self) -> None:
         env_values = self.collect_env()

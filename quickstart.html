@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Literature Agent 新手配置指南</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --panel-soft: #f8fafc;
+      --text: #111827;
+      --muted: #5f6b7a;
+      --line: #dce3ee;
+      --blue: #2563eb;
+      --blue-soft: #e8f0ff;
+      --green: #0f8a5f;
+      --green-soft: #e7f7ef;
+      --amber-soft: #fff4dc;
+      --red-soft: #fff0ee;
+      --code: #0f172a;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+      line-height: 1.65;
+    }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+      padding: 24px 18px;
+    }
+
+    .brand {
+      margin-bottom: 24px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    .brand p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .nav-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .nav-list a {
+      display: block;
+      border-radius: 8px;
+      padding: 9px 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .nav-list a:hover {
+      background: var(--blue-soft);
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    main {
+      max-width: 1040px;
+      width: 100%;
+      padding: 36px 32px 64px;
+    }
+
+    .hero { margin-bottom: 22px; }
+
+    .eyebrow {
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .hero h1 {
+      margin: 8px 0 10px;
+      font-size: 38px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .hero p {
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    h2 {
+      margin: 34px 0 12px;
+      font-size: 25px;
+      line-height: 1.25;
+    }
+
+    h3 {
+      margin: 24px 0 10px;
+      font-size: 18px;
+    }
+
+    p { margin: 8px 0; }
+
+    section {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 22px;
+      margin: 18px 0;
+    }
+
+    .notice {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 14px 16px;
+      margin: 16px 0;
+    }
+
+    .notice strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .notice.info {
+      border-color: #bcd1ff;
+      background: var(--blue-soft);
+    }
+
+    .notice.good {
+      border-color: #b8ead2;
+      background: var(--green-soft);
+    }
+
+    .notice.warn {
+      border-color: #f4d08a;
+      background: var(--amber-soft);
+    }
+
+    .notice.danger {
+      border-color: #ffc7c2;
+      background: var(--red-soft);
+    }
+
+    .steps {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+      padding: 14px;
+    }
+
+    .num {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--blue);
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .step h3 { margin-top: 3px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 11px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--panel-soft);
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    code, pre { font-family: Consolas, "SFMono-Regular", monospace; }
+
+    code {
+      border-radius: 5px;
+      background: #eef2f7;
+      padding: 2px 5px;
+      color: var(--code);
+      font-size: 0.94em;
+    }
+
+    pre {
+      overflow: auto;
+      border-radius: 8px;
+      background: #0f172a;
+      color: #e5e7eb;
+      padding: 13px 14px;
+      font-size: 13px;
+    }
+
+    .checklist {
+      display: grid;
+      gap: 9px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .checklist li {
+      position: relative;
+      padding-left: 30px;
+    }
+
+    .checklist li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 4px;
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--blue);
+      border-radius: 5px;
+      background: #ffffff;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 860px) {
+      .layout { display: block; }
+      nav {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      main { padding: 24px 18px 44px; }
+      .hero h1 { font-size: 30px; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav>
+      <div class="brand">
+        <h1>Literature Agent</h1>
+        <p>第一次使用时，请按这个页面一步一步配置。</p>
+      </div>
+      <div class="nav-list">
+        <a href="#start">先看这里</a>
+        <a href="#download">1. 下载与打开</a>
+        <a href="#model">2. 模型 API</a>
+        <a href="#topics">3. 研究主题与筛选</a>
+        <a href="#notifications">4. 飞书或邮箱通知</a>
+        <a href="#test">5. 跑一次测试</a>
+        <a href="#schedule">6. 设置每日自动运行</a>
+        <a href="#after">修改设置后会发生什么</a>
+        <a href="#troubleshooting">常见问题</a>
+        <a href="#privacy">隐私文件与分享</a>
+      </div>
+    </nav>
+
+    <main>
+      <div class="hero" id="start">
+        <div class="eyebrow">Quickstart</div>
+        <h1>配置你自己的文献机器人</h1>
+        <p>
+          这个页面面向第一次使用的人。正常使用 Windows 发布版时，不需要安装 Python，也不需要打开命令行。
+          你只需要下载 ZIP、打开这个指南、再打开配置软件。
+        </p>
+      </div>
+
+      <div class="notice info">
+        <strong>推荐使用顺序</strong>
+        先打开本页面，再打开 <code>LiteratureAgentSetup.exe</code>。在软件左侧按顺序配置：
+        <code>Model API</code>、<code>Topics &amp; Filter</code>、<code>Notifications</code>、<code>Run a Test</code>、<code>Schedule</code>。
+      </div>
+
+      <section id="download">
+        <h2>1. 下载与打开</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="num">1</div>
+            <div>
+              <h3>下载正确的 ZIP</h3>
+              <p>请在 GitHub 的 <code>Releases</code> 页面下载 <code>LiteratureAgent-Windows.zip</code>。不要用绿色 <code>Code</code> 按钮下载源码 ZIP，那个不是给普通用户直接运行的。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="num">2</div>
+            <div>
+              <h3>解压到普通文件夹</h3>
+              <p>推荐解压到类似 <code>Documents\LiteratureAgent</code> 的本地文件夹。不要直接在压缩包里运行，也不要放在临时下载目录里长期使用。</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="num">3</div>
+            <div>
+              <h3>打开配置软件</h3>
+              <p>双击 <code>LiteratureAgentSetup.exe</code>。如果 Windows 提示“未知发布者”，这是因为 EXE 没有代码签名；确认文件来自你的官方 GitHub Release 后再继续。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="model">
+        <h2>2. Model API 应该怎么填</h2>
+        <p>模型 API 用来把英文摘要写成中文摘要和深度解读。只要服务商兼容 OpenAI Chat Completions 格式，一般都可以使用。</p>
+        <table>
+          <thead>
+            <tr>
+              <th>软件字段</th>
+              <th>应该填写什么</th>
+              <th>例子</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>API Key</code></td>
+              <td>模型服务商给你的密钥。它是私密信息，不要发到 GitHub，也不要截图公开。</td>
+              <td><code>sk-...</code></td>
+            </tr>
+            <tr>
+              <td><code>Base URL</code></td>
+              <td>API 地址根路径，通常应该以 <code>/v1</code> 结尾。不要填完整的 <code>/chat/completions</code> 路径。</td>
+              <td><code>https://api.openai.com/v1</code></td>
+            </tr>
+            <tr>
+              <td><code>Model</code></td>
+              <td>服务商支持的模型名称，需要和服务商文档里的名字一致。</td>
+              <td><code>gpt-4o-mini</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="notice good">
+          <strong>这一步怎么判断成功？</strong>
+          点击 <code>Test LLM Connection</code>。如果失败，优先检查 API Key、Base URL、模型名、网络连接，以及模型账号是否还有额度。
+        </div>
+      </section>
+
+      <section id="topics">
+        <h2>3. Topics &amp; Filter 应该怎么填</h2>
+        <p>这是最重要的一页。软件会先抓一批候选论文，再用关键词组和分数规则筛出真正值得发给你的论文。</p>
+
+        <h3>打分规则</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>规则</th>
+              <th>分数影响</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>命中一个关键词组</td>
+              <td>加 <code>2 + min(该组命中的关键词数量, 4)</code> 分。一个组内命中很多词也不会无限加分。</td>
+            </tr>
+            <tr>
+              <td>命中 strong keyword</td>
+              <td>每命中一个强关键词，加 <code>4</code> 分。</td>
+            </tr>
+            <tr>
+              <td>命中 excluded keyword</td>
+              <td>每命中一个排除关键词，扣 <code>5</code> 分。</td>
+            </tr>
+            <tr>
+              <td>同时命中多个组</td>
+              <td>加交叉奖励：<code>cross_group_bonus * (命中组数 - 1)</code>。默认 <code>cross_group_bonus = 3</code>。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>关键词应该怎么写</h3>
+        <div class="grid">
+          <div class="notice">
+            <strong>把关键词组当成“概念”</strong>
+            不要把所有词都堆在一个组里。更推荐分成方法、材料体系、反应过程、表征手段等不同概念。
+          </div>
+          <div class="notice">
+            <strong>required group 要谨慎</strong>
+            如果某个概念是好论文必须具备的，就把这一组勾成 required。比如氧化方向可以要求必须命中 <code>oxidation</code> 组。
+          </div>
+          <div class="notice">
+            <strong>strong keywords 放核心偏好</strong>
+            例如你特别关心 <code>density functional theory</code>、<code>oxygen adsorption</code>，就放到 strong keywords。
+          </div>
+          <div class="notice">
+            <strong>excluded keywords 放常见误报</strong>
+            如果总是推来废水、生物、抗菌、加工粗糙度等无关论文，就把这些词放进 excluded keywords。
+          </div>
+        </div>
+
+        <h3>默认筛选强度</h3>
+        <pre>{
+  "min_score": 12,
+  "group_min_matches": 3,
+  "require_any_groups": ["oxidation"]
+}</pre>
+        <p>
+          这表示：论文总分至少 12 分，至少命中 3 个关键词组，并且必须命中 required 组里的至少一个。
+          如果报告经常为空，可以降低 <code>min_score</code> 或 <code>group_min_matches</code>；如果无关论文太多，就提高它们，或增加 excluded keywords。
+        </p>
+        <div class="notice info">
+          <strong>保存后搜索词也会更新</strong>
+          点击 <code>Save Configuration</code> 后，软件会根据关键词组和 strong keywords 自动更新 arXiv、Crossref、OpenAlex 的搜索词。
+          RSS 是固定期刊订阅源，不是关键词搜索，所以 RSS feeds 不会自动改变。
+        </div>
+      </section>
+
+      <section id="notifications">
+        <h2>4. 飞书或邮箱通知怎么填</h2>
+        <div class="grid">
+          <div>
+            <h3>飞书机器人</h3>
+            <p>如果你想把日报推送到飞书群，就打开 Feishu，并把群自定义机器人的 webhook 粘贴到 <code>Webhook URL</code>。</p>
+            <p class="small">Webhook 相当于一个私密入口，不要公开。</p>
+          </div>
+          <div>
+            <h3>邮箱</h3>
+            <p>邮箱是可选项。如果只用飞书，可以关闭邮箱。若打开邮箱，需要填写邮箱地址和 SMTP 授权码。</p>
+            <p class="small">很多邮箱的 SMTP 授权码不是登录密码，请到邮箱设置里单独生成。</p>
+          </div>
+        </div>
+        <div class="notice good">
+          <strong>这一步怎么判断成功？</strong>
+          点击 <code>Send Test Message</code> 或 <code>Send Test Email</code>。只有确认收到测试消息后，再继续下一步。
+        </div>
+      </section>
+
+      <section id="test">
+        <h2>5. 跑一次真实测试</h2>
+        <p>打开 <code>Run a Test</code>，点击 <code>Run Literature Test</code>。它会抓论文、筛选、总结，并把一份真实日报发到你开启的通知渠道。</p>
+        <ul class="checklist">
+          <li>这个过程可能需要几分钟。</li>
+          <li>进度条在动就说明后台正在运行。</li>
+          <li>测试模式可能会显示以前见过的论文，这是为了方便你确认格式和推送是否正常。</li>
+          <li>真正的每日定时任务默认会去重，不会反复发送已经推送过的论文。</li>
+        </ul>
+      </section>
+
+      <section id="schedule">
+        <h2>6. 设置每日自动运行</h2>
+        <p>打开 <code>Schedule</code>，填写每天运行的时间，例如 <code>09:00</code> 或 <code>18:30</code>，然后点击 <code>Install / Update Windows Task</code>。</p>
+        <div class="notice info">
+          <strong>重复设置不会堆任务</strong>
+          如果你先设成 9 点，后来又改成 10 点，软件会删除旧任务并保留最后一次设置。
+        </div>
+        <p>本地定时任务要求电脑在对应时间开机。如果你希望电脑关机也能运行，需要使用 README 里介绍的 GitHub Actions 云端定时方案。</p>
+      </section>
+
+      <section id="after">
+        <h2>修改设置后会发生什么</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>你修改了什么</th>
+              <th>软件会怎么处理</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>修改关键词组或筛选强度</td>
+              <td>点击 <code>Save Configuration</code> 后，新设置会覆盖旧设置。你删除的关键词不会继续生效。</td>
+            </tr>
+            <tr>
+              <td>修改飞书或邮箱</td>
+              <td>保存后建议重新发送测试消息，确认通知渠道仍然可用。</td>
+            </tr>
+            <tr>
+              <td>修改定时时间</td>
+              <td>点击 <code>Install / Update Windows Task</code> 后，旧时间会被替换。</td>
+            </tr>
+            <tr>
+              <td>之前已经推送过的论文</td>
+              <td>会继续记录在 <code>data/literature_seen.sqlite</code> 中。正常定时运行不会再重复发送。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>常见问题</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>现象</th>
+              <th>可能原因</th>
+              <th>建议处理</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>日报没有论文</td>
+              <td>筛选太严格，或当前时间窗口没有新的高相关论文。</td>
+              <td>降低 <code>min_score</code> 或 <code>group_min_matches</code>，增加更宽泛的关键词，或等待自动回溯到更早时间窗口。</td>
+            </tr>
+            <tr>
+              <td>无关论文太多</td>
+              <td>关键词太宽，或者 excluded keywords 不够。</td>
+              <td>把常见误报方向加入 excluded keywords，并适当提高 <code>min_score</code>。</td>
+            </tr>
+            <tr>
+              <td>中文摘要失败，出现兜底文本</td>
+              <td>模型 API 调用失败，或者模型配置不完整。</td>
+              <td>重新点击 <code>Test LLM Connection</code>，检查 API Key、Base URL、模型名和账号额度。</td>
+            </tr>
+            <tr>
+              <td>飞书测试成功，但日报说没有新文献</td>
+              <td>推送渠道是好的，只是当前筛选没有找到合适论文。</td>
+              <td>调整关键词或筛选强度，也可以让自动回溯机制继续往前找。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="privacy">
+        <h2>隐私文件与分享</h2>
+        <div class="notice danger">
+          <strong>不要分享已经配置或运行过的文件夹</strong>
+          软件运行后会生成包含私密信息或个人历史的文件。分享给别人时，只分享官方构建出来的 <code>LiteratureAgent-Windows.zip</code>。
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>文件或文件夹</th>
+              <th>作用</th>
+              <th>能不能分享</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>.env</code></td>
+              <td>保存 API Key、飞书 webhook、邮箱授权码。</td>
+              <td>不能</td>
+            </tr>
+            <tr>
+              <td><code>data/</code></td>
+              <td>保存已推送论文记录和回溯进度。</td>
+              <td>不能</td>
+            </tr>
+            <tr>
+              <td><code>reports/</code></td>
+              <td>保存本地生成过的日报。</td>
+              <td>默认不要分享，除非你明确想分享某份日报。</td>
+            </tr>
+            <tr>
+              <td><code>LiteratureAgent-Windows.zip</code></td>
+              <td>干净的发布包。</td>
+              <td>可以</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

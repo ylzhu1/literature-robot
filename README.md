@@ -55,11 +55,12 @@ For normal Windows users, download `LiteratureAgent-Windows.zip` from the reposi
 After downloading:
 
 1. Extract `LiteratureAgent-Windows.zip` to a normal local folder, for example `Documents\LiteratureAgent`.
-2. Double-click `LiteratureAgentSetup.exe`.
-3. Work through the left-side setup pages in order.
-4. Click `Save Configuration`.
-5. Use `Run a Test` to send one real test brief.
-6. Optional: use `Schedule` to install the daily Windows task.
+2. Open `quickstart.html` for the step-by-step first-time user guide.
+3. Double-click `LiteratureAgentSetup.exe`.
+4. Work through the left-side setup pages in order.
+5. Click `Save Configuration`.
+6. Use `Run a Test` to send one real test brief.
+7. Optional: use `Schedule` to install the daily Windows task.
 
 The app writes private credentials to `.env` and runtime outputs to `data/` and `reports/` in the extracted app folder. Keep those files private and do not re-zip a folder after it has been configured or used.
 
@@ -72,6 +73,8 @@ The app has five setup pages:
 - `Schedule`: register or update the local Windows scheduled task.
 
 In `Topics & Filter`, each keyword group is user-editable. A paper scores higher when it matches more groups. The `must appear` checkbox means the paper must match at least one checked group before it can be included. Use excluded keywords to reduce unrelated matches.
+
+When topics are saved in the GUI, the app also regenerates arXiv, Crossref, and OpenAlex search queries from the same keyword groups and strong keywords. RSS feeds are not regenerated because they are fixed journal feeds rather than keyword searches.
 
 ### Source setup
 
